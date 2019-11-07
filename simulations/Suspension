@@ -1,0 +1,14 @@
+from scipy.optimize import fsolve
+import math
+import configparser
+
+config = configparser.ConfigParser()
+#config['Weight Values (in kg)'] = {'g': '9.80655'}
+#config['Lengths (in m)'] = {'l': '1'}
+#with open('Roverdata.ini','w') as configfile:
+#    config.write(configfile)
+config.sections()
+config.read('Roverdata.ini')
+print('Weight Values (in kg)' in config)
+print(config['Weight Values (in kg)']['g'])
+print(config['Lengths (in m)']['cg_length'])
