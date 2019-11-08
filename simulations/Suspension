@@ -54,6 +54,8 @@ class rover:
         self.wheel_width = float(roverconfiguration['Lengths (in m)']['wheel_width'])
         self.cg_length = float(roverconfiguration['Lengths (in m)']['cg_length'])
         self.cg_height = float(roverconfiguration['Lengths (in m)']['cg_height'])
+        self.poisson = float(roverconfiguration['Material']['poisson'])
+        self.youngs_modulus = float(roverconfiguration['Material']['youngs_modulus'])
         self.four_bar = four_bar
         self.solid_wheel = solid_wheel
         self.slope_matrix = np.empty((15,15))
@@ -72,13 +74,26 @@ class rover:
             self.high_obs_matrix[r][c] = value
         else:
             print("ELEMENT SET ERROR")
+###SOIL CLASS SETUP###
+class soil:
+    def __init__(self, soilconfig):
+        self.n = float(soilconfig['Bekker parameters']['n'])
+        self.kc = float(soilconfig['Bekker parameters']['kc'])
+        self.kphi = float(soilconfig['Bekker parameters']['kphi'])
+        self.c = float(soilconfig['Bekker parameters']['c'])
+        self.phi = float(soilconfig['Bekker parameters']['phi'])
+        self.density = float(soilconfig['Misc']['density'])
+        self.poisson = float(soilconfig['Misc']['poisson'])
+        self.youngs_modulus = float(soilconfig['Misc']['youngs_modulus'])
 ###GEOMETRY CALCULAATORS###
 def pivot_angle_calculation(h, bogie_length, body_length, wheel_link_length):
     return math.asin(h/bogie_length)
 ###TERRAMECHANICS CALCULATIONS###
-def compute_solid_wheel_contact_length(poisson_wheel, poisson_soil, youngs_wheel, youngs_soil, W, d, b):
-    Ce = (1-math.pow(poisson_wheel,2))/youngs_wheel + (1-math.pow(poisson_soil,2))/youngs_soil
+def compute_solid_wheel_contact_length(rover, soil, W):
+    Ce = (1-math.pow(rover.poisson,2))/rover.youngs_modulus \
+     + (1-math.pow(soil.poisson,2))/soil.youngs_modulus
     return 1.60*math.sqrt(W*d*Ce/b)
+
 def compute_wheel_thrust(c, phi, Aw, W, slope_angle, J_K = 3):
     return (c*Aw + W*math.cos(slope_angle*math.pi/180.0)*math.tan(phi*math.pi/180.0))*(1.0-math.exp(-J_K))
 def compute_compaction_resistance(b, kc, kphi, l,  z, n):
@@ -114,8 +129,9 @@ def compute_drawbar_pull(d, b, z, W, l, Aw, slope_angle, fr, c, n, phi, kc, kphi
     R = compute_total_resistance(d, b, z, W, l, slope_angle, fr, c, n, phi, kc, kphi, rho, g)
     return H - R
 ###CALCULATION MATRIX SETUP
-def mew_approximation(rover, c, phi, W, solid = True):
+def mew_approximation(rover, soil, W):
     if Solid is True:
+        compute_solid_wheel_contact_length(poisson_wheel, poisson_soil, youngs_wheel, youngs_soil, W, d, b)
         Te = compute_wheel_thrust(c, phi, Aw, W, 0)
         return 3*Te/(rover.total_mass*g)
 def setup_slope_matrix(rover, slope_angle):
