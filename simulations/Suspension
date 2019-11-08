@@ -33,14 +33,13 @@
 #7. optimize four bar rover
 #   -0% complete:
 #   -Based on previous ideal parameters, using all variable 4 bar variables, find ideal case for each performance parameters
-
 from scipy.optimize import fsolve
 import math
 import numpy as np
 import configparser
 
 class rover:
-    def __init__(self, roverconfiguration, four_bar = False):
+    def __init__(self, roverconfiguration, four_bar, solid_wheel = True):
         self.wheel_mass = float(roverconfiguration['Weight Values (in kg)']['wheel_mass'])
         self.wheel_mass = float(roverconfiguration['Weight Values (in kg)']['bogie_mass'])
         self.wheel_mass = float(roverconfiguration['Weight Values (in kg)']['body_mass'])
@@ -52,12 +51,46 @@ class rover:
         self.cg_length = float(roverconfiguration['Lengths (in m)']['cg_length'])
         self.cg_height = float(roverconfiguration['Lengths (in m)']['cg_height'])
         self.four_bar = four_bar
+        self.solid_wheel = solid_wheel
         self.slope_matrix = np.empty((15,15))
         self.low_obs_matrix = np.empty((15,15))
         self.high_obs_matrix = np.empty((15,15))
 
+
+def compute_solid_wheel_contact_length(poisson_wheel, poisson_soil, youngs_wheel, youngs_soil, W, d, b):
+    Ce = (1-math.pow(poisson_wheel,2))/youngs_wheel + (1-math.pow(poisson_soil,2))/youngs_soil
+    return 1.60*math.sqrt(W*d*Ce/b)
 def compute_wheel_thrust(c, phi, Aw, W, slope_angle, J_K = 3):
     return (c*Aw + W*math.cos(slope_angle*math.pi/180.0)*math.tan(phi*math.pi/180.0))*(1.0-math.exp(-J_K))
+def compute_compaction_resistance(b, kc, kphi, l,  z, n):
+    if(b > l):
+        return b*(kc/l + kphi)*math.pow(z,n+1)/(n+1)
+    else:
+        return b*(kc/b + kphi)*math.pow(z,n+1)/(n+1)
+def compute_bulldozing_resistance(d, b, z, phi, c, W, rho, g):
+    phi *= math.pi/180
+    alpha = math.arccos(1 - 2*z/d)
+    sw = rho* g
+    NC = W/(2*l*b*c)
+    phi_n = math.arctan(2.0*math.tan(phi)/3.0)
+    kc = (NC - math.tan(phi_n),n)*math.pow(math.cos(phi_n),2)
+    N_sw = W/(2 * b * sw)
+    k_sw = (2*N_sw/math.tan(phi_n) + 1)*math.pow(math.cos(phi_n),2)
+    l = z*math.tan(0.25*math.pi - phi/2)
+    return b*math.sin(alpha + phi)*(2*z*c*kc + sw*z*z*k_sw)/(2*math.sin(alha)*math.cos(phi)) \
+    + (math.pi*sw*math.pow(l,3)*(90 - phi*180/math.pi)/540 + math.pi*c*l*l/180 + c*l*l*math.tan(0.25*pi + phi/2))
+def compute_gravitational_resistance(W, slope_angle):
+    slope_angle*math.pi/180
+    return W*math.sin(slope_angle)
+def compute_rolling_resistance(W, fr):
+    return fr*W
+def compute_drawbar_pull(d, b, z, W, l, Aw, slope_angle, fr, c, n, phi, kc, kphi, rho, g, J_K = 3):
+    H = compute_wheel_thrust(c, phi, Aw, W, slope_angle, J_K)
+    Rc = compute_compaction_resistance(b, kc, kphi, l, z, n)
+    Rb = compute_bulldozing_resistance(b, kc, kphi, l, z, n)
+    Rg = coompute_gravitational_resistance(W, slope_angle)
+    Rf = compute_rolling_resistance(W, fr)
+    return H - Rc - Rb - Rg - Rf
 
 rovconfig = configparser.ConfigParser()
 rovconfig.sections()
@@ -65,8 +98,4 @@ rovconfig.read('Roverdata.ini')
 soilconfig = configparser.ConfigParser()
 soilconfig.sections()
 soilconfig.read('Soil.ini')
-#print('Weight Values (in kg)' in rovconfig)
-#print(rovconfig['Weight Values (in kg)']['g'])
-#print(rovconfig['Lengths (in m)']['cg_length'])
-#print(soilconfig['Bekker parameters']['n'])
-rover1 = rover(rovconfig)
+rover1 = rover(rovconfig, False, True)
