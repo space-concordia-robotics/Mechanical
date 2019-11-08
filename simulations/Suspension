@@ -39,8 +39,8 @@ import math
 import numpy as np
 import configparser
 
-def compute_wheel_thrust(vertical_load, sinkage):
-    return vertical_load*sinkage
+def compute_wheel_thrust(c, phi, Aw, W, slope_angle, J_K = 3):
+    return (c*Aw + W*math.cos(slope_angle*math.pi/180.0)*math.tan(phi*math.pi/180.0))*(1.0-math.exp(-J_K))
 
 rovconfig = configparser.ConfigParser()
 rovconfig.sections()
@@ -53,3 +53,4 @@ soilconfig.read('Soil.ini')
 #print(rovconfig['Lengths (in m)']['cg_length'])
 #print(soilconfig['Bekker parameters']['n'])
 obsmatrix = np.empty((15,15))
+print(compute_wheel_thrust(float(soilconfig['Bekker parameters']['c']), float(soilconfig['Bekker parameters']['phi']), 0.00043367, 81.75, 0.0))
