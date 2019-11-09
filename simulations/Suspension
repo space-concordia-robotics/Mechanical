@@ -101,7 +101,7 @@ class soil:
 def angle_calculation(rover, h):
     if rover.four_bar is False:
         alpha = math.asin((h- rover.wheel_radius)/rover.bogie_length)
-        beta = (rover.wheel_link_length*math.sin(alpha) + 0.5*rover.bogie_length*math.sin(alpha) - rover.wheel_link_length)/(1.5*rover.bogie_length)
+        beta = (rover.wheel_link_length*math.cos(alpha) + 0.5*rover.bogie_length*math.sin(alpha) - rover.wheel_link_length)/(1.5*rover.bogie_length)
         return alpha, beta
 ###TERRAMECHANICS CALCULATIONS###
 def compute_solid_wheel_contact_length(rover, soil, W):
@@ -203,6 +203,8 @@ def setup_high_obs_matrix(rover,soil, h):
     rover.b_set(2, 10, rover.bogie_mass*g)
     rover.b_set(2, 13, rover.body_mass*g)
     rover.b_set(2, 14, rover.cg_length*math.cos(beta)*rover.body_mass*g)
+    print(alpha)
+    print(beta)
 ###INI PARSING###
 rovconfig = configparser.ConfigParser()
 rovconfig.sections()
