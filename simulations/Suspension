@@ -86,14 +86,23 @@ class soil:
         self.poisson = float(soilconfig['Misc']['poisson'])
         self.youngs_modulus = float(soilconfig['Misc']['youngs_modulus'])
 ###GEOMETRY CALCULAATORS###
-def pivot_angle_calculation(h, bogie_length, body_length, wheel_link_length):
-    return math.asin(h/bogie_length)
+def angle_calculation(rover, h):
+    if rover.four_bar is False:
+        alpha = math.asin((h- rover.wheel_radius)/rover.bogie_length)
+        beta = (rover.wheel_link_length*math.sin(alpha) + 0.5*rover.bogie_length*math.sin(alpha) - rover.wheel_link_length)/(1.5*rover.bogie_length)
+        return alpha, beta
 ###TERRAMECHANICS CALCULATIONS###
 def compute_solid_wheel_contact_length(rover, soil, W):
     Ce = (1-math.pow(rover.poisson,2))/rover.youngs_modulus \
      + (1-math.pow(soil.poisson,2))/soil.youngs_modulus
     return 1.60*math.sqrt(W*d*Ce/b)
-
+def compute_contact_area(rover, soil, W):
+    if rover.solid_wheel is True:
+        l_con = compute_solid_wheel_contact_length(rover, soil, W)
+        return l_con * rover.b
+    else:
+        print("ERROR: FLEXIBLE WHEEL MODULE NOT IMPLEMENTED")
+        return 0
 def compute_wheel_thrust(c, phi, Aw, W, slope_angle, J_K = 3):
     return (c*Aw + W*math.cos(slope_angle*math.pi/180.0)*math.tan(phi*math.pi/180.0))*(1.0-math.exp(-J_K))
 def compute_compaction_resistance(b, kc, kphi, l,  z, n):
@@ -129,19 +138,53 @@ def compute_drawbar_pull(d, b, z, W, l, Aw, slope_angle, fr, c, n, phi, kc, kphi
     R = compute_total_resistance(d, b, z, W, l, slope_angle, fr, c, n, phi, kc, kphi, rho, g)
     return H - R
 ###CALCULATION MATRIX SETUP
-def mew_approximation(rover, soil, W):
+def mew_approximation(rover, soil):
     if Solid is True:
-        compute_solid_wheel_contact_length(poisson_wheel, poisson_soil, youngs_wheel, youngs_soil, W, d, b)
-        Te = compute_wheel_thrust(c, phi, Aw, W, 0)
-        return 3*Te/(rover.total_mass*g)
+        W = rover.total_mass*g/3
+        Aw = compute_contact_area(rover, soil, W)
+        Te = compute_wheel_thrust(soil.c, soil.phi, Aw, W, 0)
+        return Te/W
 def setup_slope_matrix(rover, slope_angle):
     return 1
 def setup_low_obs_matrix(rover, h):
     return 1
-def setup_high_obs_matrix(rover, h):
+def setup_high_obs_matrix(rover,soil, h):
+    mew = mew_approximation(rover, soil)
+    alpha, beta = angle_calculation(rover, h)
     rover.element_set(2, 0, 0, 1)
     rover.element_set(2, 0, 1, -1)
-    rover.element_set(2, 1, 2, -1)
+    rover.element_set(2, 1, 2, 1)
+    rover.element_set(2, 1, 3, 1)
+    rover.element_set(2, 2, 3, rover.wheel_radius)
+    rover.element_set(2, 2, 4, -1)
+    rover.element_set(2, 3, 5, mew)
+    rover.element_set(2, 3, 6, -1)
+    rover.element_set(2, 4, 5, 1)
+    rover.element_set(2, 4, 7, 1)
+    rover.element_set(2, 5, 5, mew*rover.wheel_radius)
+    rover.element_set(2, 5, 8, -1)
+    rover.element_set(2, 6, 9, mew)
+    rover.element_set(2, 6, 10, -1)
+    rover.element_set(2, 7, 9, 1)
+    rover.element_set(2, 7, 11, 1)
+    rover.element_set(2, 8, 9, mew*rover.wheel_radius)
+    rover.element_set(2, 8, 12, -1)
+    rover.element_set(2, 9, 1, 1)
+    rover.element_set(2, 9, 6, 1)
+    rover.element_set(2, 9, 13, 1)
+    rover.element_set(2, 10, 2, 1)
+    rover.element_set(2, 10, 7, 1)
+    rover.element_set(2, 10, 14, 1)
+    rover.element_set(2, 11, 1, -0.5*rover.bogie_length*math.sin(alpha) + rover.wheel_link_length*math.cos(alpha))
+    rover.element_set(2, 11, 2, 0.5*rover.bogie_length*math.cos(alpha) + rover.wheel_link_length*math.sin(alpha))
+    rover.element_set(2, 11, 6, 0.5*rover.bogie_length*math.sin(alpha) + rover.wheel_link_length*math.cos(alpha))
+    rover.element_set(2, 11, 7, -0.5*rover.bogie_length*math.cos(alpha) - rover.wheel_link_length*math.sin(alpha))
+    rover.element_set(2, 12, 10, 1)
+    rover.element_set(2, 12, 13, -1)
+    rover.element_set(2, 13, 11, 1)
+    rover.element_set(2, 13, 14, 1)
+    rover.element_set(2, 14, 10, 1.5*rover.bogie_length*math.sin(beta) + rover.wheel_link_length*math.cos(beta))
+    rover.element_set(2, 14, 11, 1.5*rover.bogie_length*math.cos(beta) - rover.wheel_link_length*math.sin(beta))
 ###INI PARSING###
 rovconfig = configparser.ConfigParser()
 rovconfig.sections()
