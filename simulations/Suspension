@@ -95,11 +95,11 @@ def angle_calculation(rover, h):
 def compute_solid_wheel_contact_length(rover, soil, W):
     Ce = (1-math.pow(rover.poisson,2))/rover.youngs_modulus \
      + (1-math.pow(soil.poisson,2))/soil.youngs_modulus
-    return 1.60*math.sqrt(W*d*Ce/b)
+    return 1.60*math.sqrt(W * 2 * rover.wheel_radius * Ce / rover.wheel_width)
 def compute_contact_area(rover, soil, W):
     if rover.solid_wheel is True:
         l_con = compute_solid_wheel_contact_length(rover, soil, W)
-        return l_con * rover.b
+        return l_con * rover.wheel_width
     else:
         print("ERROR: FLEXIBLE WHEEL MODULE NOT IMPLEMENTED")
         return 0
@@ -139,7 +139,7 @@ def compute_drawbar_pull(d, b, z, W, l, Aw, slope_angle, fr, c, n, phi, kc, kphi
     return H - R
 ###CALCULATION MATRIX SETUP
 def mew_approximation(rover, soil):
-    if Solid is True:
+    if rover.solid_wheel is True:
         W = rover.total_mass*g/3
         Aw = compute_contact_area(rover, soil, W)
         Te = compute_wheel_thrust(soil.c, soil.phi, Aw, W, 0)
@@ -194,3 +194,5 @@ soilconfig.sections()
 soilconfig.read('Soil.ini')
 ###MAIN BODY###
 rover1 = rover(rovconfig, False, True)
+mars_soil = soil(soilconfig)
+setup_high_obs_matrix(rover1,mars_soil, 0.3)
