@@ -11,14 +11,14 @@
 #       *DONE: compute gravitational resistance function
 #       *DONE: create aggregate drawbar pull function
 #3. Create angle geometry calculator for pivot and 4 bar cases
-#   -1% complete:
-#       *differentiate from obstacle mode and slope mode
-#       *from rover geometry and height, get alpha and beta
+#   -100% complete:
+#       *DONE: differentiate from obstacle mode and slope mode
+#       *DONE: from rover geometry and height, get alpha and beta
 #4. Create matrix calculator
 #   -5% comlete:
 #       *function to generate computation matrix for each scenario:
 #           1. rover climbing obstacle of height h lower than radius
-#           2. rover climbing obstacle of height h higher than radius
+#           2. DONE: rover climbing obstacle of height h higher than radius
 #           3. rover going across a slope
 #           4. rover driving straight
 #5. create simulation
@@ -45,13 +45,16 @@ class rover:
     def __init__(self, roverconfiguration, four_bar, solid_wheel = True):
         self.wheel_mass = float(roverconfiguration['Weight Values (in kg)']['wheel_mass'])
         self.bogie_mass = float(roverconfiguration['Weight Values (in kg)']['bogie_mass'])
+        self.wheel_link_mass = float(roverconfiguration['Weight Values (in kg)']['wheel_link_mass'])
+        self.bogie_total_mass = self.bogie_mass + 2*self.wheel_link_mass
         self.body_mass = float(roverconfiguration['Weight Values (in kg)']['body_mass'])
-        self.total_mass = self.wheel_mass + self.bogie_mass + self.body_mass
+        self.total_mass = self.wheel_mass + self.bogie_total_mass + self.body_mass
         self.coefficient_of_friction = float(roverconfiguration['Weight Values (in kg)']['coefficient_of_friction'])
         self.bogie_length = float(roverconfiguration['Lengths (in m)']['bogie_length'])
         self.wheel_link_length = float(roverconfiguration['Lengths (in m)']['wheel_link_length'])
         self.wheel_radius = float(roverconfiguration['Lengths (in m)']['wheel_radius'])
         self.wheel_width = float(roverconfiguration['Lengths (in m)']['wheel_width'])
+        self.body_cg_length = float(roverconfiguration['CG']['body_cg_length'])
         self.cg_length = float(roverconfiguration['Lengths (in m)']['cg_length'])
         self.cg_height = float(roverconfiguration['Lengths (in m)']['cg_height'])
         self.poisson = float(roverconfiguration['Material']['poisson'])
@@ -64,7 +67,12 @@ class rover:
         self.b_slope = np.zeros(15)
         self.b_low_obs = np.zeros(15)
         self.b_high_obs = np.zeros(15)
-    def compute_cg():
+    def compute_cg(rover):
+        cg_length = (rover.body_mass*rover.body_cg_length + 1.5*rover.bogie_length * 2*(rover.bogie_total_mass + 2*rover.wheel_mass)) \
+        / (rover.body_mass + 2*rover.bogie_total_mass + 6*rover.wheel_mass)
+        cg_height = (6*rover.wheel_radius + \
+        2* (2*rover.wheel_link_length*(0.5*rover.wheel_link_length + rover.wheel_radius) + rover.bogie_mass*(rover.wheel_radius+rover.wheel_link_length+rover.bogie_tube_height/2)) + \
+        )
         return 1
         #computes centre of gravity based on cg of components
         #assumption: wheel CG at center, bogie symmetric
@@ -200,11 +208,9 @@ def setup_high_obs_matrix(rover,soil, h):
     rover.b_set(2, 1, rover.wheel_mass*g)
     rover.b_set(2, 4, rover.wheel_mass*g)
     rover.b_set(2, 7, rover.wheel_mass*g)
-    rover.b_set(2, 10, rover.bogie_mass*g)
+    rover.b_set(2, 10, rover.bogie_total_mass*g)
     rover.b_set(2, 13, rover.body_mass*g)
     rover.b_set(2, 14, rover.cg_length*math.cos(beta)*rover.body_mass*g)
-    print(alpha)
-    print(beta)
 ###INI PARSING###
 rovconfig = configparser.ConfigParser()
 rovconfig.sections()
@@ -218,6 +224,3 @@ mars_soil = soil(soilconfig)
 setup_high_obs_matrix(rover1,mars_soil, 0.3)
 #print(rover1.high_obs_matrix[13][14])
 solution = np.linalg.solve(rover1.high_obs_matrix, rover1.b_high_obs)
-print(rover1.high_obs_matrix)
-print(rover1.b_high_obs)
-print(solution)
