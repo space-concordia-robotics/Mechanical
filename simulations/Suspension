@@ -164,8 +164,25 @@ def mew_approximation(rover, soil):
         Aw = compute_contact_area(rover, soil, W)
         Te = compute_wheel_thrust(soil.c, soil.phi, Aw, W, 0)
         return Te/W
-def setup_slope_matrix(rover, slope_angle):
-    return 1
+def setup_slope_matrix(variables, rover, theta):
+    theta *= math.pi/180 #converts from degrees to radians
+    (Fna, Fnb, Fnc, Frxa, Frxb, Frxc, Frya, Fryb, Fryc, T1, T2, T3, Fbx, Fby, mew) = variables
+    return (mew*Fna - Frxa - rover.wheel_mass*g*math.sin(theta), \
+            Fna - Frya - rover.wheel_mass*g*math.cos(theta), \
+            mew*rover.wheel_radius*Fna - T1, \
+            mew*Fnb - Frxb - rover.wheel_mass*g*math.sin(theta), \
+            Fnb - Fryb - rover.wheel_mass*g*math.cos(theta), \
+            mew*rover.wheel_radius*Fnb - T3, \
+            mew*Fnc - Frxc - rover.wheel_mass*g*math.sin(theta), \
+            Fnc - Fryc - rover.wheel_mass*g*math.cos(theta), \
+            mew*rover.wheel_radius*Fnc - T3, \
+            Frxa + Frxb - Fbx - rover.bogie_total_mass*g*math.sin(theta), \
+            Fryb + Frya - Fby - rover.bogie_total_mass*g*math.cos(theta), \
+            0.5*rover.bogie_length*(Frya - Fryb) + rover.wheel_link_length*(Frxa + Frxb), \
+            Fbx + Frxc - rover.body_mass*g*math.sin(theta), \
+            Fby + Fryc - rover.body_mass*g*math.cos(theta), \
+            1.5*rover.bogie_length*Fryc - rover.wheel_link_length*Frxc - (rover.cg_length*math.cos(theta) + rover.cg_height*math.sin(theta))*rover.body_mass*g \
+            )
 def setup_low_obs_matrix(variables, rover, h):
     alpha = 0
     beta = 0
@@ -191,7 +208,8 @@ def setup_low_obs_matrix(variables, rover, h):
             2*Fryc + 2*Fby - rover.body_mass*g, \
             (-2*1.5*rover.bogie_length*math.sin(beta) - 2*rover.wheel_link_length*math.cos(beta))*Frxc + \
             ( 2*1.5*rover.bogie_length*math.cos(beta) - 2*rover.wheel_link_length*math.sin(beta))*Fryc - \
-            ( rover.cg_length*math.cos(beta) + rover.cg_height*math.sin(beta)) * rover.body_mass )
+            ( rover.cg_length*math.cos(beta) + rover.cg_height*math.sin(beta)) * rover.body_mass \
+            )
 def setup_high_obs_matrix(variables, rover, h):
     alpha = math.asin((h - rover.wheel_radius)/rover.bogie_length)
     beta = (rover.wheel_link_length*math.cos(alpha) + 0.5*rover.bogie_length*math.sin(alpha) - rover.wheel_link_length)/(1.5*rover.bogie_length)
@@ -217,7 +235,8 @@ def setup_high_obs_matrix(variables, rover, h):
             2*Fryc + 2*Fby - rover.body_mass*g, \
             (-2*1.5*rover.bogie_length*math.sin(beta) - 2*rover.wheel_link_length*math.cos(beta))*Frxc + \
             ( 2*1.5*rover.bogie_length*math.cos(beta) - 2*rover.wheel_link_length*math.sin(beta))*Fryc - \
-            ( rover.cg_length*math.cos(beta) + rover.cg_height*math.sin(beta)) * rover.body_mass )
+            ( rover.cg_length*math.cos(beta) + rover.cg_height*math.sin(beta)) * rover.body_mass \
+            )
 ###INI PARSING###
 rovconfig = configparser.ConfigParser()
 rovconfig.sections()
@@ -228,7 +247,8 @@ soilconfig.read('Soil.ini')
 ###MAIN BODY###
 rover1 = rover(rovconfig, False, True)
 mars_soil = soil(soilconfig)
-solution = fsolve(setup_low_obs_matrix, (71.5,64.6,87.6,71.53,130.35,41.17,45.9,37.1,60.1,11.0,4.55,6.18,41.2,73.03,0.921), (rover1, 0.08))
+#solution = fsolve(setup_high_obs_matrix, (71.5,64.6,87.6,71.53,130.35,41.17,45.9,37.1,60.1,11.0,4.55,6.18,41.2,73.03,0.921), (rover1, 0.16))
+solution = fsolve(setup_slope_matrix, (71.5,64.6,87.6,71.53,130.35,41.17,45.9,37.1,60.1,11.0,4.55,6.18,41.2,73.03,0.921), (rover1, 35))
 print("RESULTS:")
 print("NORMAL AT A:", solution[0])
 print("NORMAL AT B:", solution[1])
