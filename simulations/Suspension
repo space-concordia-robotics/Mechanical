@@ -249,16 +249,21 @@ soilconfig.read('Soil.ini')
 ###MAIN BODY###
 rover1 = rover(rovconfig, False, True)
 mars_soil = soil(soilconfig)
-for h in np.arange(0.05, rover1.wheel_radius, 0.01):
-     solution = fsolve(setup_low_obs_matrix, (71.5,64.6,87.6,71.53,130.35,41.17,45.9,37.1,60.1,11.0,4.55,6.18,41.2,73.03,0.56), (rover1, h))
-     with open('results.csv', 'a') as csvfile:
+for theta in np.arange(0.1, 60, 0.1):
+     solution = fsolve(setup_slope_matrix, (71.5,64.6,87.6,71.53,130.35,41.17,45.9,37.1,60.1,11.0,4.55,6.18,41.2,73.03,0.56), (rover1, theta))
+     with open('sloperesults.csv', 'a') as csvfile:
          writer = csv.writer(csvfile)
-         writer.writerow([h, solution[14]])
-for h in np.arange(0.16, rover1.wheel_radius + rover1.bogie_length, 0.01):
-     solution = fsolve(setup_high_obs_matrix, (71.5,64.6,87.6,71.53,130.35,41.17,45.9,37.1,60.1,11.0,4.55,6.18,41.2,73.03,0.56), (rover1, h))
-     with open('results.csv', 'a') as csvfile:
-         writer = csv.writer(csvfile)
-         writer.writerow([h, solution[14]])
+         writer.writerow([theta, solution[14]])
+#for h in np.arange(0.05, rover1.wheel_radius, 0.01):
+#     solution = fsolve(setup_low_obs_matrix, (71.5,64.6,87.6,71.53,130.35,41.17,45.9,37.1,60.1,11.0,4.55,6.18,41.2,73.03,0.56), (rover1, h))
+#     with open('results.csv', 'a') as csvfile:
+#         writer = csv.writer(csvfile)
+#         writer.writerow([h, solution[14]])
+#for h in np.arange(0.16, rover1.wheel_radius + rover1.bogie_length, 0.01):
+#     solution = fsolve(setup_high_obs_matrix, (71.5,64.6,87.6,71.53,130.35,41.17,45.9,37.1,60.1,11.0,4.55,6.18,41.2,73.03,0.56), (rover1, h))
+#     with open('results.csv', 'a') as csvfile:
+#         writer = csv.writer(csvfile)
+#         writer.writerow([h, solution[14]])
 #solution = fsolve(setup_slope_matrix, (71.5,64.6,87.6,71.53,130.35,41.17,45.9,37.1,60.1,11.0,4.55,6.18,41.2,73.03,0.921), (rover1, 35))
 #print("RESULTS:")
 #print("NORMAL AT A:", solution[0])
