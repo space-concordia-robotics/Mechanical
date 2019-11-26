@@ -190,7 +190,7 @@ def setup_low_obs_matrix(variables, rover, h):
     cangle = math.asin((rover.wheel_radius - h)/rover.wheel_radius)
     print(cangle)
     (Fna, Fnb, Fnc, Frxa, Frxb, Frxc, Frya, Fryb, Fryc, T1, T2, T3, Fbx, Fby, mew) = variables
-    return (Fna*(math.sin(cangle) - mew*math.cos(cangle)) + Frxa, \
+    return (Fna*(-math.cos(cangle) + mew*math.sin(cangle)) + Frxa, \
             Fna*(math.sin(cangle) + mew*math.cos(cangle)) - Frya - rover.wheel_mass*g, \
             rover.wheel_radius*mew*Fna - T1, \
             mew*Fnb - Frxb, \
@@ -200,16 +200,16 @@ def setup_low_obs_matrix(variables, rover, h):
             Fnc - Fryc - rover.wheel_mass*g, \
             rover.wheel_radius*mew*Fnc - T3, \
             -Frxa + Frxb + Fbx, \
-            Frya + Fryb - Fby - rover.bogie_total_mass, \
+            Frya + Fryb - Fby - rover.bogie_total_mass*g, \
             ( 0.5*rover.bogie_length*math.sin(alpha) - rover.wheel_link_length*math.cos(alpha))*Frxa + \
             ( 0.5*rover.bogie_length*math.cos(alpha) + rover.wheel_link_length*math.sin(alpha))*Frya + \
             (-0.5*rover.bogie_length*math.sin(alpha) + rover.wheel_link_length*math.cos(alpha))*Frxb + \
-            (-0.5*rover.bogie_length*math.cos(alpha) - rover.wheel_link_length*math.sin(alpha))*Fryb,  \
+            (-0.5*rover.bogie_length*math.cos(alpha) + rover.wheel_link_length*math.sin(alpha))*Fryb + T1 + T2,  \
             2*Frxc - 2*Fbx, \
             2*Fryc + 2*Fby - rover.body_mass*g, \
-            (-2*1.5*rover.bogie_length*math.sin(beta) - 2*rover.wheel_link_length*math.cos(beta))*Frxc + \
-            ( 2*1.5*rover.bogie_length*math.cos(beta) - 2*rover.wheel_link_length*math.sin(beta))*Fryc - \
-            ( rover.cg_length*math.cos(beta) + rover.cg_height*math.sin(beta)) * rover.body_mass \
+            (-2*1.5*rover.bogie_length*math.sin(beta) - 2*rover.wheel_link_length*math.cos(beta))* -Frxc + \
+            ( -2*1.5*rover.bogie_length*math.cos(beta) + 2*rover.wheel_link_length*math.sin(beta))*Fryc - \
+            ( -rover.cg_length*math.cos(beta) - rover.cg_height*math.sin(beta)) * rover.body_mass*g +T3\
             )
 def setup_high_obs_matrix(variables, rover, h):
     alpha = math.asin((h - rover.wheel_radius)/rover.bogie_length)
@@ -248,7 +248,7 @@ soilconfig.read('Soil.ini')
 ###MAIN BODY###
 rover1 = rover(rovconfig, False, True)
 mars_soil = soil(soilconfig)
-solution = fsolve(setup_high_obs_matrix, (71.5,64.6,87.6,71.53,130.35,41.17,45.9,37.1,60.1,11.0,4.55,6.18,41.2,73.03,0.65), (rover1, 0.15))
+solution = fsolve(setup_high_obs_matrix, (71.5,64.6,87.6,71.53,130.35,41.17,45.9,37.1,60.1,11.0,4.55,6.18,41.2,73.03,0.56), (rover1, 0.15))
 #solution = fsolve(setup_slope_matrix, (71.5,64.6,87.6,71.53,130.35,41.17,45.9,37.1,60.1,11.0,4.55,6.18,41.2,73.03,0.921), (rover1, 35))
 print("RESULTS:")
 print("NORMAL AT A:", solution[0])
