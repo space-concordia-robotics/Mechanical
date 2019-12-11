@@ -39,11 +39,12 @@ import math
 import numpy as np
 import configparser
 import csv
+import os
 ###CONSTANTS SETUP###
 g = 9.80655
 ###ROVER CLASS SETUP###
 class rover:
-    def __init__(self, roverconfiguration, four_bar, solid_wheel = True):
+    def __init__(self, roverconfiguration, solid_wheel = True):
         self.wheel_mass = float(roverconfiguration['Weight Values (in kg)']['wheel_mass'])
         self.bogie_mass = float(roverconfiguration['Weight Values (in kg)']['bogie_mass'])
         self.wheel_link_mass = float(roverconfiguration['Weight Values (in kg)']['wheel_link_mass'])
@@ -61,7 +62,6 @@ class rover:
         self.cg_height = float(roverconfiguration['Lengths (in m)']['cg_height'])
         self.poisson = float(roverconfiguration['Material']['poisson'])
         self.youngs_modulus = float(roverconfiguration['Material']['youngs_modulus'])
-        self.four_bar = four_bar
         self.solid_wheel = solid_wheel
         self.slope_matrix = np.zeros((15,15))
         self.low_obs_matrix = np.zeros((15,15))
@@ -69,15 +69,6 @@ class rover:
         self.b_slope = np.zeros(15)
         self.b_low_obs = np.zeros(15)
         self.b_high_obs = np.zeros(15)
-    def compute_cg(rover):
-        cg_length = (rover.body_mass*rover.body_cg_length + 1.5*rover.bogie_length * 2*(rover.bogie_total_mass + 2*rover.wheel_mass)) \
-        / (rover.body_mass + 2*rover.bogie_total_mass + 6*rover.wheel_mass)
-        cg_height = (6*rover.wheel_radius + \
-        2* (2*rover.wheel_link_length*(0.5*rover.wheel_link_length + rover.wheel_radius) + rover.bogie_mass*(rover.wheel_radius+rover.wheel_link_length+rover.bogie_tube_height/2)) + \
-        1)
-        return 1
-        #computes centre of gravity based on cg of components
-        #assumption: wheel CG at center, bogie symmetric
     def A_set(self, matrix, r, c, value):
         if(matrix is 0):
             self.slope_matrix[r][c] = value
@@ -180,10 +171,10 @@ def setup_slope_matrix(variables, rover, theta):
             mew*rover.wheel_radius*Fnc - T3, \
             Frxa + Frxb - Fbx - rover.bogie_total_mass*g*math.sin(theta), \
             Fryb + Frya - Fby - rover.bogie_total_mass*g*math.cos(theta), \
-            0.5*rover.bogie_length*(Frya - Fryb) + rover.wheel_link_length*(Frxa + Frxb), \
+            0.5*rover.bogie_length*(Frya - Fryb) + rover.wheel_link_length*(Frxa + Frxb) - T1 - T2, \
             Fbx + Frxc - rover.body_mass*g*math.sin(theta), \
             Fby + Fryc - rover.body_mass*g*math.cos(theta), \
-            1.5*rover.bogie_length*Fryc - rover.wheel_link_length*Frxc - (rover.cg_length*math.cos(theta) + rover.cg_height*math.sin(theta))*rover.body_mass*g \
+            1.5*rover.bogie_length*Fryc - rover.wheel_link_length*Frxc - (rover.cg_length*math.cos(theta) + rover.cg_height*math.sin(theta))*rover.body_mass*g -T3\
             )
 def setup_low_obs_matrix(variables, rover, h):
     alpha = 0
@@ -239,6 +230,33 @@ def setup_high_obs_matrix(variables, rover, h):
             ( -2*1.5*rover.bogie_length*math.cos(beta) + 2*rover.wheel_link_length*math.sin(beta))*Fryc - \
             ( -rover.cg_length*math.cos(beta) - rover.cg_height*math.sin(beta)) * rover.body_mass*g +T3\
             )
+def setup_4bar_high_matrix(variables, rover, h):
+    alpha = math.asin((h - rover.wheel_radius)/rover.bogie_length)
+    beta = (rover.wheel_link_length*math.cos(alpha) + 0.5*rover.bogie_length*math.sin(alpha) - rover.wheel_link_length)/(1.5*rover.bogie_length)
+    print("ALPHA:", alpha*180.0/math.pi)
+    print("BETA:", beta*180.0/math.pi)
+    (Fna, Fnb, Fnc, Frxa, Frxb, Frxc, Frya, Fryb, Fryc, T1, T2, T3, Fbx, Fby, mew) = variables
+    return (-Fna + Frxa, \
+            -Frya + mew*Fna - rover.wheel_mass*g, \
+            rover.wheel_radius*mew*Fna - T1, \
+            mew*Fnb - Frxb, \
+            Fnb - Fryb - rover.wheel_mass*g, \
+            rover.wheel_radius*mew*Fnb - T2, \
+            mew*Fnc - Frxc, \
+            Fnc - Fryc - rover.wheel_mass*g, \
+            rover.wheel_radius*mew*Fnc - T3, \
+            -Frxa + Frxb + Fbx, \
+            Frya + Fryb - Fby - rover.bogie_total_mass*g, \
+            ( 0.5*rover.bogie_length*math.sin(alpha) - rover.wheel_link_length*math.cos(alpha))*Frxa + \
+            ( 0.5*rover.bogie_length*math.cos(alpha) + rover.wheel_link_length*math.sin(alpha))*Frya + \
+            (-0.5*rover.bogie_length*math.sin(alpha) + rover.wheel_link_length*math.cos(alpha))*Frxb + \
+            (-0.5*rover.bogie_length*math.cos(alpha) + rover.wheel_link_length*math.sin(alpha))*Fryb + T1 + T2,  \
+            2*Frxc - 2*Fbx, \
+            2*Fryc + 2*Fby - rover.body_mass*g, \
+            (-2*1.5*rover.bogie_length*math.sin(beta) - 2*rover.wheel_link_length*math.cos(beta))* -Frxc + \
+            ( -2*1.5*rover.bogie_length*math.cos(beta) + 2*rover.wheel_link_length*math.sin(beta))*Fryc - \
+            ( -rover.cg_length*math.cos(beta) - rover.cg_height*math.sin(beta)) * rover.body_mass*g +T3\
+            )
 ###INI PARSING###
 rovconfig = configparser.ConfigParser()
 rovconfig.sections()
@@ -247,23 +265,29 @@ soilconfig = configparser.ConfigParser()
 soilconfig.sections()
 soilconfig.read('Soil.ini')
 ###MAIN BODY###
-rover1 = rover(rovconfig, False, True)
+rover1 = rover(rovconfig, True)
 mars_soil = soil(soilconfig)
-#for theta in np.arange(0.1, 60, 0.1):
-#     solution = fsolve(setup_slope_matrix, (71.5,64.6,87.6,71.53,130.35,41.17,45.9,37.1,60.1,11.0,4.55,6.18,41.2,73.03,0.56), (rover1, theta))
-#     with open('sloperesults.csv', 'a') as csvfile:
+###Run slope calcs
+if os.path.exists('sloperesults.csv'):
+   os.remove('sloperesults.csv')
+for theta in np.arange(0.1, 60, 0.1):
+     solution = fsolve(setup_slope_matrix, (71.5,64.6,87.6,71.53,130.35,41.17,45.9,37.1,60.1,11.0,4.55,6.18,41.2,73.03,0.56), (rover1, theta))
+     with open('sloperesults.csv', 'a') as csvfile:
+         writer = csv.writer(csvfile)
+         writer.writerow([theta, solution[14]])
+     if( solution[6] < 1):
+         print("wheelie at: ", theta)
+         break
+#for h in np.arange(0.01, rover1.wheel_radius, 0.001):
+#     solution = fsolve(setup_low_obs_matrix, (71.5,64.6,87.6,71.53,130.35,41.17,45.9,37.1,60.1,11.0,4.55,6.18,41.2,73.03,0.56), (rover1, h))
+#     with open('obsresults.csv', 'a') as csvfile:
 #         writer = csv.writer(csvfile)
-#         writer.writerow([theta, solution[14]])
-for h in np.arange(0.01, rover1.wheel_radius, 0.001):
-     solution = fsolve(setup_low_obs_matrix, (71.5,64.6,87.6,71.53,130.35,41.17,45.9,37.1,60.1,11.0,4.55,6.18,41.2,73.03,0.56), (rover1, h))
-     with open('obsresults.csv', 'a') as csvfile:
-         writer = csv.writer(csvfile)
-         writer.writerow([h, solution[14]])
-for h in np.arange(0.151, rover1.wheel_radius + rover1.bogie_length, 0.001):
-     solution = fsolve(setup_high_obs_matrix, (71.5,64.6,87.6,71.53,130.35,41.17,45.9,37.1,60.1,11.0,4.55,6.18,41.2,73.03,0.56), (rover1, h))
-     with open('obsresults.csv', 'a') as csvfile:
-         writer = csv.writer(csvfile)
-         writer.writerow([h, solution[14]])
+#         writer.writerow([h, solution[14]])
+#for h in np.arange(0.151, rover1.wheel_radius + rover1.bogie_length, 0.001):
+#     solution = fsolve(setup_high_obs_matrix, (71.5,64.6,87.6,71.53,130.35,41.17,45.9,37.1,60.1,11.0,4.55,6.18,41.2,73.03,0.56), (rover1, h))
+#     with open('obsresults.csv', 'a') as csvfile:
+#         writer = csv.writer(csvfile)
+#         writer.writerow([h, solution[14]])
 #solution = fsolve(setup_slope_matrix, (71.5,64.6,87.6,71.53,130.35,41.17,45.9,37.1,60.1,11.0,4.55,6.18,41.2,73.03,0.921), (rover1, 35))
 #print("RESULTS:")
 #print("NORMAL AT A:", solution[0])
