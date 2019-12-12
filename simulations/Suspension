@@ -235,7 +235,7 @@ def setup_4bar_high_matrix(variables, rover, h):
     beta = (rover.wheel_link_length*math.cos(alpha) + 0.5*rover.bogie_length*math.sin(alpha) - rover.wheel_link_length)/(1.5*rover.bogie_length)
     print("ALPHA:", alpha*180.0/math.pi)
     print("BETA:", beta*180.0/math.pi)
-    (Fna, Fnb, Fnc, Frxa, Frxb, Frxc, Frya, Fryb, Fryc, T1, T2, T3, Fbx, Fby, mew) = variables
+    (Fna, Fnb, Fnc, Frxa, Frxb, Frxc, Frya, Fryb, Fryc, T1, T2, T3, Fl, Fr, mew) = variables
     return (-Fna + Frxa, \
             -Frya + mew*Fna - rover.wheel_mass*g, \
             rover.wheel_radius*mew*Fna - T1, \
@@ -245,13 +245,13 @@ def setup_4bar_high_matrix(variables, rover, h):
             mew*Fnc - Frxc, \
             Fnc - Fryc - rover.wheel_mass*g, \
             rover.wheel_radius*mew*Fnc - T3, \
-            -Frxa + Frxb + Fbx, \
-            Frya + Fryb - Fby - rover.bogie_total_mass*g, \
-            ( 0.5*rover.bogie_length*math.sin(alpha) - rover.wheel_link_length*math.cos(alpha))*Frxa + \
-            ( 0.5*rover.bogie_length*math.cos(alpha) + rover.wheel_link_length*math.sin(alpha))*Frya + \
-            (-0.5*rover.bogie_length*math.sin(alpha) + rover.wheel_link_length*math.cos(alpha))*Frxb + \
-            (-0.5*rover.bogie_length*math.cos(alpha) + rover.wheel_link_length*math.sin(alpha))*Fryb + T1 + T2,  \
-            2*Frxc - 2*Fbx, \
+            -Frxa + Frxb + Fl*math.sin(alpha - gamma) + Fr*math.sin(alpha + delta), \
+            Frya + Fryb - Fl*math.cos(alpha - gamma) + Fr*math.cos(alpha + delta) - rover.bogie_total_mass*g, \
+            0.5*db*(Fl*math.cos(gamma) - Fr*math.cos(delta)) - Frxa* ( rover.wheel_link_length*math.cos(alpha) - 0.5* rover.bogie_length * math.sin(alpha)) + \
+            (0.5* rover.bogie_length * math.cos(alpha) + rover.wheel_link_length * math.sin(alpha)) * Frya - \
+            (0.5* rover.bogie_length * math.cos(alpha) - rover.wheel_link_length * math.sin(alpha)) * Fryb + \
+            (0.5* rover.bogie_length * math.sin(alpha) + rover.wheel_link_length * math.cos(alpha)), \
+            2*Frxc  + 2*Fl*math.sin(epsilon - beta) - 2*Fr*math.sin(phi + beta), \
             2*Fryc + 2*Fby - rover.body_mass*g, \
             (-2*1.5*rover.bogie_length*math.sin(beta) - 2*rover.wheel_link_length*math.cos(beta))* -Frxc + \
             ( -2*1.5*rover.bogie_length*math.cos(beta) + 2*rover.wheel_link_length*math.sin(beta))*Fryc - \
