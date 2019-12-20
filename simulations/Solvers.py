@@ -2,6 +2,19 @@
 import math
 ###CONSTANTS
 g = 9.80655
+###GEOMETRY FUNCTIONS###
+def calpha(rover, h):
+    return (0 if (h is 0) else math.asin((h - rover.wheel_radius)/rover.bogie_length))
+def cbeta(rover, alpha):
+    return (rover.wheel_link_length*math.cos(alpha) + 0.5*rover.bogie_length*math.sin(alpha) - rover.wheel_link_length)/(1.5*rover.bogie_length)
+def c4(alpha, beta, db, dc, lr, ll):
+    (gamma, delta, epsilon, phi) = variables
+    A_solution = (db*math.cos(alpha) - lr*math.sin(delta + alpha) - dc*math.cos(beta) + ll*math.sin(alpha - gamma), \
+                  db*math.sin(alpha) + lr*math.cos(delta + alpha) - dc*math.sin(beta) - ll*math.cos(alpha - gamma), \
+                  alpha + delta - beta - phi, \
+                  alpha - gamma + epsilon - beta)
+    solution = fsolve(A_solution, (0, 0, 0, 0), (alpha, beta, db, dc, lr, ll))
+    return solution
 ###PIVOT MECHANISM###
 ###PIVOT - SLOPE ###
 def setup_slope_matrix(variables, rover, theta):
@@ -53,10 +66,13 @@ def setup_low_obs_matrix(variables, rover, h):
             )
 ###PIVOT - HIGH OBSTACLE###
 def setup_high_obs_matrix(variables, rover, h):
-    alpha = math.asin((h - rover.wheel_radius)/rover.bogie_length)
-    beta = (rover.wheel_link_length*math.cos(alpha) + 0.5*rover.bogie_length*math.sin(alpha) - rover.wheel_link_length)/(1.5*rover.bogie_length)
-    print("ALPHA:", alpha*180.0/math.pi)
-    print("BETA:", beta*180.0/math.pi)
+    alpha = calpha(rover, h)
+    beta = cbeta(rover, alpha)
+    s = c4(alpha, beta, db, dc, lr, ll)
+    gamma = s[0]
+    delta = s[1]
+    epsilon = s[2]
+    phi = s[3]
     (Fna, Fnb, Fnc, Frxa, Frxb, Frxc, Frya, Fryb, Fryc, T1, T2, T3, Fbx, Fby, mew) = variables
     return (-Fna + Frxa, \
             -Frya + mew*Fna - rover.wheel_mass*g, \
@@ -81,11 +97,9 @@ def setup_high_obs_matrix(variables, rover, h):
             )
 ###4BAR###
 ###4 BAR - HIGH OBSTACLE###
-def setup_4bar_high_matrix(variables, rover, h):
+def setup_4bar_high_matrix(variables, rover, h, db, dc, lr, ll):
     alpha = math.asin((h - rover.wheel_radius)/rover.bogie_length)
     beta = (rover.wheel_link_length*math.cos(alpha) + 0.5*rover.bogie_length*math.sin(alpha) - rover.wheel_link_length)/(1.5*rover.bogie_length)
-    print("ALPHA:", alpha*180.0/math.pi)
-    print("BETA:", beta*180.0/math.pi)
     (Fna, Fnb, Fnc, Frxa, Frxb, Frxc, Frya, Fryb, Fryc, T1, T2, T3, Fl, Fr, mew) = variables
     return (-Fna + Frxa, \
             -Frya + mew*Fna - rover.wheel_mass*g, \
