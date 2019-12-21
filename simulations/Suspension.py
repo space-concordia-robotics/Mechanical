@@ -15,22 +15,16 @@
 #       *DONE: differentiate from obstacle mode and slope mode
 #       *DONE: from rover geometry and height, get alpha and beta
 #4. Create matrix calculator
-#   -5% comlete:
+#   -87% comlete:
 #       *function to generate computation matrix for each scenario:
-#           1. rover climbing obstacle of height h lower than radius
+#           1. DONE: rover climbing obstacle of height h lower than radius
 #           2. DONE: rover climbing obstacle of height h higher than radius
-#           3. rover going across a slope
-#           4. rover driving straight
-#5. create simulation
-#   -0% complete:
-#       *Calculate drawbar pull for each case mentioned previously
-#       *calculate max velocity, acceleration and gradeability
-#       *calculate required torque for stall conditions (adhesion based)
-#       *calculate stability
-#6. create simulation to optimize rover parameters
+#           3. DONE: rover going across a slope
+#           4. Rewrite solver for four bar cases: Halfway done
+#5. create simulation to optimize rover parameters
 #   -0% complete:
 #       *given rover parameter and acceptable ranges, run through all instances and find ideal case for each performance parameters
-#7. optimize four bar rover
+#6. optimize four bar rover
 #   -0% complete:
 #   -Based on previous ideal parameters, using all variable 4 bar variables, find ideal case for each performance parameters
 ###IMPORT LIBRARIES###
