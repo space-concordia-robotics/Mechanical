@@ -39,6 +39,7 @@ import sys
 #sys.path.append(file_dir)
 import Solvers
 import Terramechanics
+import Simulation
 ###ROVER CLASS SETUP###
 class rover:
     def __init__(self, roverconfiguration, solid_wheel = True):
@@ -77,6 +78,8 @@ class soil:
         self.density = float(soilconfig['Misc']['density'])
         self.poisson = float(soilconfig['Misc']['poisson'])
         self.youngs_modulus = float(soilconfig['Misc']['youngs_modulus'])
+
+###MAIN BODY###
 ###INI PARSING###
 rovconfig = configparser.ConfigParser()
 rovconfig.sections()
@@ -84,35 +87,13 @@ rovconfig.read('Roverdata.ini')
 soilconfig = configparser.ConfigParser()
 soilconfig.sections()
 soilconfig.read('Soil.ini')
-###MAIN BODY###
+###CONSTRUCT OBJECTS###
 rover1 = rover(rovconfig, True)
 mars_soil = soil(soilconfig)
-###Run slope calcs
-if os.path.exists('sloperesults.csv'):
-   os.remove('sloperesults.csv')
-if os.path.exists('4bresults.csv'):
-   os.remove('4bresults.csv')
-for theta in np.arange(0.1, 60, 0.1):
-     solution = fsolve(Solvers.setup_slope_matrix, (71.5,64.6,87.6,71.53,130.35,41.17,45.9,37.1,60.1,11.0,4.55,6.18,41.2,73.03,0.56), (rover1, theta))
-     with open('sloperesults.csv', 'a') as csvfile:
-         writer = csv.writer(csvfile)
-         writer.writerow([theta, solution[14]])
-     if( solution[6] < 0.1):
-         print("wheelie at: ", theta)
-         break
-for theta in np.arange(0.1, 60, 0.1):
-     dc = 0.2
-     db = 0.1
-     lr = 0.1
-     ll = 0.1
-     solution = fsolve(Solvers.setup_4bar_slope_matrix, (71.5,64.6,87.6,71.53,130.35,41.17,45.9,37.1,60.1,11.0,4.55,6.18,41.2,73.03,0.56), (rover1, theta, db, dc, lr, ll))
-     with open('4bresults.csv', 'a') as csvfile2:
-         writer = csv.writer(csvfile2)
-         writer.writerow([theta, solution[14]])
-     if( solution[6] < 0.1):
-         print("wheelie at: ", theta)
-         print(solution[6])
-         break
+##RUN SLOPE CALCS###
+solution = Simulation.run_sim(False, 0, rover1)
+print(solution[6])
+
 #for h in np.arange(0.01, rover1.wheel_radius, 0.001):
 #     solution = fsolve(setup_low_obs_matrix, (71.5,64.6,87.6,71.53,130.35,41.17,45.9,37.1,60.1,11.0,4.55,6.18,41.2,73.03,0.56), (rover1, h))
 #     with open('obsresults.csv', 'a') as csvfile:
