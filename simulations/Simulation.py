@@ -9,13 +9,19 @@ from scipy.optimize import fsolve
 ###IMPORT CUSTOM FILES###
 import Solvers
 
-def run_sim(is4bar, theta, rover, dc = 0.1, db = 0.05, lr = 0.1, ll = 0.1):
+def run_slope_sim(is4bar, theta, rover, dc = 0.1, db = 0.05, lr = 0.1, ll = 0.1):
     if is4bar is False:
         solution = fsolve(Solvers.setup_slope_matrix, (71.5,64.6,87.6,71.53,130.35,41.17,45.9,37.1,60.1,11.0,4.55,6.18,41.2,73.03,0.56), (rover, theta))
     elif is4bar is True:
         solution = fsolve(Solvers.setup_4bar_slope_matrix, (71.5,64.6,87.6,71.53,130.35,41.17,45.9,37.1,60.1,11.0,4.55,6.18,41.2,73.03,0.56), (rover, theta, db, dc, lr, ll))
     return solution
 
+def run_obs_sim(is4bar, h, rover, dc = 0.1, db = 0.05, lr = 0.1, ll = 0.1):
+    if is4bar is False:
+        solution = fsolve(Solvers.setup_high_obs_matrix, (71.5,64.6,87.6,71.53,130.35,41.17,45.9,37.1,60.1,11.0,4.55,6.18,41.2,73.03,0.56), (rover, h))
+    elif is4bar is True:
+        solution = fsolve(Solvers.setup_4bar_high_matrix, (71.5,64.6,87.6,71.53,130.35,41.17,45.9,37.1,60.1,11.0,4.55,6.18,41.2,73.03,0.56), (rover, h, db, dc, lr, ll))
+    return solution
 #Mode 0 - Run simple non 4 bar slope calcs
 #Mode 1 - Run 4 bar slope calcs
 #Mode 2 - Run both and compare (returning wheelie and torque differences)

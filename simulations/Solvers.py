@@ -68,11 +68,6 @@ def setup_low_obs_matrix(variables, rover, h):
 def setup_high_obs_matrix(variables, rover, h):
     alpha = calpha(rover, h)
     beta = cbeta(rover, alpha)
-    s = c4(alpha, beta, db, dc, lr, ll)
-    gamma = s[0]
-    delta = s[1]
-    epsilon = s[2]
-    phi = s[3]
     (Fna, Fnb, Fnc, Frxa, Frxb, Frxc, Frya, Fryb, Fryc, T1, T2, T3, Fbx, Fby, mew) = variables
     return (-Fna + Frxa, \
             -Frya + mew*Fna - rover.wheel_mass*g, \
@@ -98,8 +93,13 @@ def setup_high_obs_matrix(variables, rover, h):
 ###4BAR###
 ###4 BAR - HIGH OBSTACLE###
 def setup_4bar_high_matrix(variables, rover, h, db, dc, lr, ll):
-    alpha = math.asin((h - rover.wheel_radius)/rover.bogie_length)
-    beta = (rover.wheel_link_length*math.cos(alpha) + 0.5*rover.bogie_length*math.sin(alpha) - rover.wheel_link_length)/(1.5*rover.bogie_length)
+    alpha = calpha(rover, h)
+    beta = cbeta(rover, alpha)
+    s = fsolve(c4, (0, 0, 0, 0), (alpha, beta, db, dc, lr, ll))
+    gamma = s[0]
+    delta = s[1]
+    epsilon = s[2]
+    phi = s[3]
     (Fna, Fnb, Fnc, Frxa, Frxb, Frxc, Frya, Fryb, Fryc, T1, T2, T3, Fl, Fr, mew) = variables
     return (-Fna + Frxa, \
             -Frya + mew*Fna - rover.wheel_mass*g, \
@@ -111,7 +111,7 @@ def setup_4bar_high_matrix(variables, rover, h, db, dc, lr, ll):
             Fnc - Fryc - rover.wheel_mass*g, \
             rover.wheel_radius*mew*Fnc - T3, \
             -Frxa + Frxb + Fl*math.sin(alpha - gamma) + Fr*math.sin(alpha + delta), \
-            Frya + Fryb - Fl*math.cos(alpha - gamma) + Fr*math.cos(alpha + delta) - rover.bogie_total_mass*g, \
+            Frya + Fryb - Fl*math.cos(alpha - gamma) - Fr*math.cos(alpha + delta) - rover.bogie_total_mass*g, \
             0.5*db*(Fl*math.cos(gamma) - Fr*math.cos(delta)) - Frxa* ( rover.wheel_link_length*math.cos(alpha) - 0.5* rover.bogie_length * math.sin(alpha)) + \
             (0.5* rover.bogie_length * math.cos(alpha) + rover.wheel_link_length * math.sin(alpha)) * Frya - \
             (0.5* rover.bogie_length * math.cos(alpha) - rover.wheel_link_length * math.sin(alpha)) * Fryb + \
