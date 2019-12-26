@@ -91,8 +91,12 @@ soilconfig.read('Soil.ini')
 rover1 = rover(rovconfig, True)
 mars_soil = soil(soilconfig)
 ##RUN SLOPE CALCS###
-Simulation.simulate_slope_range(False, rover1, 0.1, 60)
-Simulation.simulate_slope_range(True, rover1, 0.1, 60)
+#Simulation.simulate_slope_range(False, rover1, 0.1, 60)
+#Simulation.simulate_slope_range(True, rover1, 0.1, 60)
+solution1 = Simulation.run_sim(False, 20, rover1)
+solution2 = Simulation.run_sim(True, 20, rover1)
+print(solution1[9], solution1[10], solution1[11])
+print(solution2[9], solution2[10], solution2[11])
 
 #for h in np.arange(0.01, rover1.wheel_radius, 0.001):
 #     solution = fsolve(setup_low_obs_matrix, (71.5,64.6,87.6,71.53,130.35,41.17,45.9,37.1,60.1,11.0,4.55,6.18,41.2,73.03,0.56), (rover1, h))
