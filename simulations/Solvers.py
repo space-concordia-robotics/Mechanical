@@ -15,6 +15,11 @@ def c4(variables, alpha, beta, db, dc, lr, ll):
                   db*math.sin(alpha) + lr*math.cos(delta + alpha) - dc*math.sin(beta) - ll*math.cos(alpha - gamma), \
                   alpha + delta - beta - phi, \
                   alpha - gamma + epsilon - beta)
+
+def bogie_limiter(variables, theta_max, dc, db):
+    (lr, ll) = variables
+    theta = theta_max*math.pi/180
+    return (2*lr*dc*math.cos(theta) - (db + ll)**2 + lr**2 + dc**2, 2*ll*dc*math.cos(theta) - (db + lr)**2 + ll**2 + dc**2)
 ###PIVOT MECHANISM###
 ###PIVOT - SLOPE ###
 def setup_slope_matrix(variables, rover, theta):
