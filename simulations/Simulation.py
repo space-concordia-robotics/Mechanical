@@ -37,7 +37,7 @@ def determine_wheelie_slope(is4bar, rover, dc = 0.1, db = 0.05, lr = 0.1, ll = 0
     return None
 
 def run_full_sim(rover):
-    increment = 0.01 #MODIFY THIS TO CHANGE ITERATIONS
+    increment = 0.001 #MODIFY THIS TO CHANGE ITERATIONS
     bogie_limit = 45 #CHANGE TO ALLOW FOR DIFFERENT LIMITS
     dc_max = 0.45 #CHANGE FOR MAX CHASSIS ANCHOR DISTANCE
     if os.path.exists('results.csv'): #FILE MANAGEMENT
@@ -52,12 +52,18 @@ def run_full_sim(rover):
         T3 = orig_sol[11]
         Tt = T1 + T2 + T3
         writer.writerow(['NA', 'NA', 'NA', 'NA', reg_slope, T1, T2, T3, Tt, 'NA'])
-        for dc in np.arange(0.0, dc_max, increment):
+        for dc in np.arange(increment, dc_max, increment):
             for db in np.arange(0.0, dc, increment):
-                ls = fsolve(Solvers.bogie_limiter, (dc, dc), (bogie_limit, dc, db))
+                ls = fsolve(Solvers.bogie_limiter, (5, 5), (bogie_limit, dc, db))
                 lr = ls[0]
                 ll = ls[1]
+                if ((lr < 0) or (ll < 0)):
+                    continue
                 th = determine_wheelie_slope(True, rover, dc, db, lr, ll)
+                if (th is None):
+                    th = 90
+                if (reg_slope > th):
+                    continue
                 osol = run_obs_sim(True, 0.15, rover, dc, db, lr, ll)
                 T11 = T1 - osol[9]
                 T22 = T2 - osol[10]

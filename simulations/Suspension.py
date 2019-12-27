@@ -92,3 +92,5 @@ rover1 = rover(rovconfig, True)
 mars_soil = soil(soilconfig)
 ##RUN SLOPE CALCS###
 Simulation.run_full_sim(rover1)
+#Simulation.determine_wheelie_slope(False, rover1)
+#Simulation.determine_wheelie_slope(True, rover1, 0.1, 0.09, 0.049250047, 0.049250047)

@@ -36,10 +36,10 @@ def setup_slope_matrix(variables, rover, theta):
             mew*rover.wheel_radius*Fnc - T3, \
             Frxa + Frxb - Fbx - rover.bogie_total_mass*g*math.sin(theta), \
             Fryb + Frya - Fby - rover.bogie_total_mass*g*math.cos(theta), \
-            0.5*rover.bogie_length*(Frya - Fryb) + rover.wheel_link_length*(Frxa + Frxb), \
+            0.5*rover.bogie_length*(Frya - Fryb) + rover.wheel_link_length*(Frxa + Frxb) + T1 + T2, \
             Fbx + Frxc - rover.body_mass*g*math.sin(theta), \
             Fby + Fryc - rover.body_mass*g*math.cos(theta), \
-            1.5*rover.bogie_length*Fryc - rover.wheel_link_length*Frxc - (rover.cg_length*math.cos(theta) + rover.cg_height*math.sin(theta))*rover.body_mass*g\
+            1.5*rover.bogie_length*Fryc - rover.wheel_link_length*Frxc - (rover.cg_length*math.cos(theta) + rover.cg_height*math.sin(theta))*rover.body_mass*g + T3\
             )
 ###PIVOT _ LOW OBSTACLE###
 def setup_low_obs_matrix(variables, rover, h):
@@ -137,7 +137,7 @@ def setup_4bar_slope_matrix(variables, rover, theta, db, dc, lr, ll):
     delta = s[1]
     epsilon = s[2]
     phi = s[3]
-    print(gamma, delta, epsilon, phi)
+    #print(gamma, delta, epsilon, phi)
     theta *= math.pi/180 #converts from degrees to radians
     (Fna, Fnb, Fnc, Frxa, Frxb, Frxc, Frya, Fryb, Fryc, T1, T2, T3, Fl, Fr, mew) = variables
     return (mew*Fna - Frxa - rover.wheel_mass*g*math.sin(theta), \
@@ -151,9 +151,9 @@ def setup_4bar_slope_matrix(variables, rover, theta, db, dc, lr, ll):
             mew*rover.wheel_radius*Fnc - T3, \
             Frxa + Frxb + Fr*math.sin(delta) - Fl*math.sin(gamma) - rover.bogie_total_mass*g*math.sin(theta), \
             Fryb + Frya - Fr*math.cos(delta) - Fl*math.cos(gamma) - rover.bogie_total_mass*g*math.cos(theta), \
-            0.5*rover.bogie_length*(Frya - Fryb) + rover.wheel_link_length*(Frxa + Frxb) + 0.5*db*(-Fr*math.cos(delta) + Fl*math.cos(gamma)), \
+            0.5*rover.bogie_length*(Frya - Fryb) + rover.wheel_link_length*(Frxa + Frxb) + 0.5*db*(-Fr*math.cos(delta) + Fl*math.cos(gamma)) + T1 + T2, \
             Fl*math.sin(epsilon) - Fr*math.sin(phi) + Frxc - rover.body_mass*g*math.sin(theta), \
             Fl*math.cos(epsilon) + Fr*math.cos(phi) + Fryc - rover.body_mass*g*math.cos(theta), \
             1.5*rover.bogie_length*Fryc - rover.wheel_link_length*Frxc - (rover.cg_length*math.cos(theta) + rover.cg_height*math.sin(theta))*rover.body_mass*g + \
-            0.5*dc*(Fr*math.cos(phi) - Fl*math.cos(epsilon))\
+            0.5*dc*(Fr*math.cos(phi) - Fl*math.cos(epsilon)) + T3\
             )
