@@ -38,7 +38,7 @@ def determine_wheelie_slope(is4bar, rover, dc = 0.1, db = 0.05, lr = 0.1, ll = 0
 
 def run_full_sim(rover):
     increment = 0.001 #MODIFY THIS TO CHANGE ITERATIONS
-    bogie_limit = 45 #CHANGE TO ALLOW FOR DIFFERENT LIMITS
+    bogie_limit = 42 #CHANGE TO ALLOW FOR DIFFERENT LIMITS
     dc_max = 0.45 #CHANGE FOR MAX CHASSIS ANCHOR DISTANCE
     if os.path.exists('results.csv'): #FILE MANAGEMENT
         os.remove('results.csv')
@@ -73,3 +73,4 @@ def run_full_sim(rover):
                 idelta = math.asin(0.5*(dc - db)/lr)
                 IC = dc/(math.tan(igamma) + math.tan(idelta))
                 writer.writerow([dc, db, lr, ll, th, T11, T22, T33, Ttt, IC])
+                print(dc)
