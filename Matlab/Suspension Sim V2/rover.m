@@ -6,5 +6,17 @@ classdef rover
         Mp
         Mw
         Lmax
+        xcm
+        ycm
+        xf
+        yf
+        xm
+        ym
+        xr
+        yr
+        FW_theta
+        MW_theta
+        RW_theta
+        tch
     end
 end
