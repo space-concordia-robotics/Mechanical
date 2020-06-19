@@ -1,8 +1,6 @@
 classdef rover
     properties
-        Rf
-        Rm
-        Rr
+        R
         Mp
         Mw
         Lmax
@@ -14,9 +12,7 @@ classdef rover
         ym
         xr
         yr
-        FW_theta
-        MW_theta
-        RW_theta
+        th
         tch
     end
 end

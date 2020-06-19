@@ -66,10 +66,14 @@ classdef stairs < road
             %the first block is characterized by 0
             %a block is switched right after the step
             %so xmin is not included in the domain
+            largenum = 100000000000;
             xmin = bnum * obj.tread;
             xmax = xmin + obj.tread;
             ymin = bnum * obj.riser;
             ymax = ymin + obj.riser;
+            if (bnum == 0)
+                xmin = -largenum;
+            end
         end
         
         function output = detectBlock(obj, x)
@@ -80,12 +84,10 @@ classdef stairs < road
             output = bnum;
         end
         
-        function Output = isOnDomain(obj, x, y, bnum, sbnum)
+        function Output = isOnDomain(obj, x, y, bnum, sbnum, R)
             [xmin, xmax, ymin, ymax] = obj.detectDomain(bnum);
-            if (~isnumeric(x) || ~isnumeric(y))
-                Output = 0;
-            elseif (sbnum == 1) 
-                if (((x > xmax) || (x < xmin)))
+            if (sbnum == 1) 
+                if (((x > (xmax - R)) || (x < xmin)))
                     Output = 0;
                 else
                     Output = 1;
@@ -97,7 +99,7 @@ classdef stairs < road
                     Output = 1;
                 end
             elseif (sbnum == 3)
-                if ((abs(x - xmax) < 0.0001) || (abs(y - ymax) < 0.0001))
+                if ((abs(x - xmax) < 0.001) || (abs(y - ymax) < 0.001))
                     Output = 1;
                 else 
                     Output = 0;
