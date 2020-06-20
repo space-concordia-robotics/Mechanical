@@ -11,6 +11,7 @@ classdef rockerbogie < rover
     end
     methods
         function obj = rockerbogie(rocker_left, rocker_right, bogie_left, bogie_right, bogie_height, cg_height, Ra)
+            %Defines geometric properties only
             obj.Ll    = rocker_left;
             obj.Lr    = rocker_right;
             obj.ll    = bogie_left;
@@ -111,20 +112,18 @@ classdef rockerbogie < rover
             F = vpasolve([eq1, eq2, eq3, eq4, eq5, eq6, eq7, eq8, eq9, eq10, eq11, eq12, eq13], [prx, pry, pmx, pmy, pfx, pfy, thr, thm, thf, alp, bet, ppx, ppy]);
         end
         
-        function obj = configurePos(obj, Wheelnum, stair, x, y, th)
+        function obj = DetectPos(obj, Wheelnum, stair, x, y, th)
             if( stair.isOnstairs(x, y) == 0)
                 disp('ERROR: configurePos input not on stair');
-            else
-                DetectPos(obj, Wheelnum, stair, x, y, th);
+                return;
             end
-        end
-        
-        function obj = DetectPos(obj, Wheelnum, stair, x, y, th)         
             largenum = 10000;
             bnum = stair.detectBlock(x);
             iblk = 4;
             solfound = 0;
             switch Wheelnum
+                %This assigns basic loop information based on the number of
+                %the input wheel.
                 case 1
                     e1 =  0;
                     e2 =  0;
@@ -144,8 +143,8 @@ classdef rockerbogie < rover
                     e2 = largenum;
                     i1 = 1;
                     i2 = 1;
-                    w1 =  1;
-                    w2 =  2;
+                    w1 = 1;
+                    w2 = 2;
                 otherwise
                     disp('Error is Distloop. Incorrect Wheelnum');
             end
@@ -162,17 +161,12 @@ classdef rockerbogie < rover
                             break;
                         end        
                         for s2 = 3:-1:1
-                            switch Wheelnum
-                                case 1
-                                    blk = [bnum, l1, l2];
-                                    sb =  [iblk, s1, s2];
-                                case 2
-                                    blk = [l1, bnum, l2];
-                                    sb =  [s1, iblk, s2];
-                                case 3
-                                    blk = [l1, l2, bnum];
-                                    sb =  [s1, s2, iblk];
-                            end
+                            blk(w1) = l1;
+                            blk(w2) = l2;
+                            blk(Wheelnum) = bnum;
+                            sb(w1) = s1;
+                            sb(w2) = s2;
+                            sb(Wheelnum) = iblk;
                             if (obj.isStepPossible(stair, Wheelnum, x, y, th, blk, sb) == 0)
                                 continue;
                             end

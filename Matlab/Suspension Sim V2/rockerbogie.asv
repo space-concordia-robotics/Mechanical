@@ -11,6 +11,7 @@ classdef rockerbogie < rover
     end
     methods
         function obj = rockerbogie(rocker_left, rocker_right, bogie_left, bogie_right, bogie_height, cg_height, Ra)
+            %Defines geometric properties only
             obj.Ll    = rocker_left;
             obj.Lr    = rocker_right;
             obj.ll    = bogie_left;
@@ -111,20 +112,18 @@ classdef rockerbogie < rover
             F = vpasolve([eq1, eq2, eq3, eq4, eq5, eq6, eq7, eq8, eq9, eq10, eq11, eq12, eq13], [prx, pry, pmx, pmy, pfx, pfy, thr, thm, thf, alp, bet, ppx, ppy]);
         end
         
-        function obj = configurePos(obj, Wheelnum, stair, x, y, th)
+        function obj = DetectPos(obj, Wheelnum, stair, x, y, th)
             if( stair.isOnstairs(x, y) == 0)
                 disp('ERROR: configurePos input not on stair');
-            else
-                DetectPos(obj, Wheelnum, stair, x, y, th);
+                return;
             end
-        end
-        
-        function obj = DetectPos(obj, Wheelnum, stair, x, y, th)         
             largenum = 10000;
             bnum = stair.detectBlock(x);
             iblk = 4;
             solfound = 0;
             switch Wheelnum
+                %This assigns basic loop information based on the number of
+                %the input wheel.
                 case 1
                     e1 =  0;
                     e2 =  0;
@@ -144,8 +143,8 @@ classdef rockerbogie < rover
                     e2 = largenum;
                     i1 = 1;
                     i2 = 1;
-                    w1 =  1;
-                    w2 =  2;
+                    w1 = 1;
+                    w2 = 2;
                 otherwise
                     disp('Error is Distloop. Incorrect Wheelnum');
             end
@@ -162,6 +161,9 @@ classdef rockerbogie < rover
                             break;
                         end        
                         for s2 = 3:-1:1
+                            blk(w1) = l1;
+                            blk(w2) = l2;
+                            blk(Wheelnum) = bnum;
                             switch Wheelnum
                                 case 1
                                     blk = [bnum, l1, l2];
@@ -177,24 +179,6 @@ classdef rockerbogie < rover
                                 continue;
                             end
                             obj = SolveStEq(obj, stair, blk, sb, x, y, th);
-                            if(~isempty(obj.xf))
-                                disp("Solution set:");
-                                disp(blk);
-                                disp(sb);
-                                disp("x and y, th of f:");
-                                disp(obj.xf);
-                                disp(obj.yf);
-                                disp(obj.th(1));
-                                disp("x and y, th of m:");
-                                disp(obj.xm);
-                                disp(obj.ym);
-                                disp(obj.th(2));
-                                disp("x and y, th of r:");
-                                disp(obj.xr);
-                                disp(obj.yr);
-                                disp(obj.th(3));
-                                disp(newline);
-                            end
                             if(obj.tch == 1)
                                 solfound = 1;
                                 disp('SOLUTION INFO');
@@ -223,15 +207,9 @@ classdef rockerbogie < rover
             else
                 %prx pry pmx pmy pfx pfy thr thm thf alp bet ppx ppy
                 if(sub(1) == 4)
-                    disp("sub 1 called for the following subblock set:");
-                    disp(sub);
                     mch = stair.isOnDomain(sol.pmx, sol.pmy, blck(2), sub(2), obj.R(2));
                     rch = stair.isOnDomain(sol.prx, sol.pry, blck(3), sub(3), obj.R(3));
                     obj.tch = rch && mch;
-                    disp(mch);
-                    disp(rch);
-                    disp(obj.tch);
-                    disp("end of tch check");
                 elseif(sub(2) == 4)
                     fch = stair.isOnDomain(sol.pfx, sol.pfy, blck(1), sub(1), obj.R(1));
                     rch = stair.isOnDomain(sol.prx, sol.pry, blck(3), sub(3), obj.R(3));
@@ -301,34 +279,26 @@ classdef rockerbogie < rover
                        pmax(1) = largenum;
                    case 3 
                        loopnum = 2;
-                       y3 = (blk(3) + 1) * st.riser;
-                       x3 = (blk(3) + 1) * st.tread; 
+                       y3 = (blk(Wo) + 1) * st.riser;
+                       x3 = (blk(Wo) + 1) * st.tread; 
                        p = sqrt( (xg - x3)^2 + (yg - y3)^2 );
-                       if( p^2 + obj.R(Wo) < lb^2 )
-                           Out = 0;
-                           return;
-                       end
                        del = acos( (lb^2 - obj.R(Wo)^2 - p^2) / (2*obj.R(Wo)*p) );
                        bet = atan( (yg - y3) / (xg - x3) );
                        th = del + bet - pi/2;
-                       disp("BLK:");
-                       disp(blk);
-                       disp("SBLK:");
-                       disp(sblk);
-                       disp("TH CHECKING STAGE:");
-                       disp(th);
-                       disp("DELTA:");
-                       disp(del);
-                       disp("BETA:");
-                       disp(bet);
+                       xo = x3 - obj.R(Wo) * sin(th);
+                       yo = x3 + obj.R(Wo) * cos(th);
+                       if( xo > xg || yo > xg || p^2 + obj.R(Wo) < lb^2)
+                           Out = 0;
+                           return;
+                       end
                        pmin(1) = th;
                        pmax(1) = th;
                        dmin(1) = 0;
                        dmax(1) = pi/2;
-                       alp = asin( (lb/p) * csc(del) ) + th - pi/2;
+                       alp = asin( (p/lb) * sin(del) ) + th - pi/2;
                end
-               pivx = xg + sign * (obj.delta*sin(alp) + lb*cos(alp)/2);
-               pivy = yg + obj.delta*cos(alp) + sign*lb*sin(alp)/2;
+               pivx = xg - obj.delta*sin(alp) + sign * lb * cos(alp) /2;
+               pivy = yg + obj.delta*cos(alp) + sign * lb * sin(alp) /2;
                switch sblk(3)
                    case 1
                        y3 = blk(3) * st.riser + obj.R(3);
@@ -346,7 +316,6 @@ classdef rockerbogie < rover
                        pmin(2) = sqrt((y3min - pivy)^2 + (x3min - pivx)^2);  
                        pmax(2) = sqrt((y3max - pivy)^2 + (x3max - pivx)^2);
                end
-           disp( 
            end
            for i = 1:loopnum
                if (pmin(i) > dmax(i) || pmax(i) < dmin(i))
