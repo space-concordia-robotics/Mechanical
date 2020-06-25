@@ -18,9 +18,9 @@ classdef rockerbogie < rover
             obj.lr    = bogie_right;
             obj.delta = bogie_height;
             obj.hc    = cg_height;
-            obj.R(1)    = Ra(1);
-            obj.R(2)    = Ra(2);
-            obj.R(3)    = Ra(3);
+            obj.R(1)  = Ra(1);
+            obj.R(2)  = Ra(2);
+            obj.R(3)  = Ra(3);
         end
         
         function F = Staireq(obj, stair, b, bb1, bb2, bb3, xi, yi, thi)
@@ -167,10 +167,11 @@ classdef rockerbogie < rover
                             sb(w1) = s1;
                             sb(w2) = s2;
                             sb(Wheelnum) = iblk;
-                            if (obj.isStepPossible(stair, Wheelnum, x, y, th, blk, sb) == 0)
-                                continue;
+                            if (Wheelnum ~= 3)
+                                obj = obj.cForm( stair, Wheelnum, x, y, th, blk, sb);
+                            else
+                                obj = SolveStEq(obj, stair, blk, sb, x, y, th);
                             end
-                            obj = SolveStEq(obj, stair, blk, sb, x, y, th);
                             if(obj.tch == 1)
                                 solfound = 1;
                                 disp('SOLUTION INFO');
@@ -195,30 +196,18 @@ classdef rockerbogie < rover
                 disp('ERROR: vpasolve error. Empty values. Following inputs:');
                 disp(blck);
                 disp(sub);
-                obj.xf = [];
+                obj.x = [];
             else
                 %prx pry pmx pmy pfx pfy thr thm thf alp bet ppx ppy
-                if(sub(1) == 4)
-                    mch = stair.isOnDomain(sol.pmx, sol.pmy, blck(2), sub(2), obj.R(2));
-                    rch = stair.isOnDomain(sol.prx, sol.pry, blck(3), sub(3), obj.R(3));
-                    obj.tch = rch && mch;
-                elseif(sub(2) == 4)
-                    fch = stair.isOnDomain(sol.pfx, sol.pfy, blck(1), sub(1), obj.R(1));
-                    rch = stair.isOnDomain(sol.prx, sol.pry, blck(3), sub(3), obj.R(3));
-                    obj.tch = rch && fch;
-                elseif(sub(3) == 4)
-                    fch = stair.isOnDomain(sol.pfx, sol.pfy, blck(1), sub(1), obj.R(1));
-                    mch = stair.isOnDomain(sol.pmy, sol.pmy, blck(2), sub(2), obj.R(2));
-                    obj.tch = fch && mch;
-                end
                 obj.alpha = sol.alp;
                 obj.beta = sol.bet;
-                obj.xr = sol.prx - obj.R(3) * sin(sol.thr);
-                obj.yr = sol.pry + obj.R(3) * cos(sol.thr);
-                obj.xm = sol.pmx - obj.R(2) * sin(sol.thm);
-                obj.ym = sol.pmy + obj.R(2) * cos(sol.thm);
-                obj.xf = sol.pfx - obj.R(1) * sin(sol.thf);
-                obj.yf = sol.pfy + obj.R(1) * cos(sol.thf);
+                obj.x(3) = sol.prx - obj.R(3) * sin(sol.thr);
+                obj.y(3) = sol.pry + obj.R(3) * cos(sol.thr);
+                obj.x(2) = sol.pmx - obj.R(2) * sin(sol.thm);
+                obj.y(2) = sol.pmy + obj.R(2) * cos(sol.thm);
+                obj.x(1) = sol.pfx - obj.R(1) * sin(sol.thf);
+                obj.y(1) = sol.pfy + obj.R(1) * cos(sol.thf);
+                obj.tch = tcheck(obj, stair, blck, sub, obj.x, obj.y);
                 obj.xcm = sol.prx + obj.Ll*cos(sol.bet) - (obj.delta + obj.hc)*sin(sol.bet);
                 obj.ycm = sol.pry + obj.Ll*sin(sol.bet) + (obj.delta + obj.hc)*cos(sol.bet);
                 obj.th(1) = sol.thf;
@@ -227,149 +216,165 @@ classdef rockerbogie < rover
             end
         end
         
-        function Out = isStepPossible(obj, st, Wg, xs, ys, ts, blk, sblk)
-           %The aim of the function is to check if a solution is possible.
-           %It does soby checking and performing four comparisons:
-           %C1 -> Compare front and mid wheel distnace
-           %C2 -> Compare front and rear wheel distance
-           %C3 -> Compare mid and rear wheel distance
-           %C4 -> Compare rear wheel and pivot point distance
-           %Each variable checks if a comparison can be done.
-           %If it cannot, it will automatically pass the comparison.
-           %For the function to turn positive, all comparisons must be
-           %positive.
-           largenum = 1000000000; %approximate infinite distance
-           tol = 0.001; %tolerance for float comparisons
+        function obj = cForm(obj, st, Wg, xs, ys, ts, blk, sblk)
            xg = xs - obj.R(Wg)*sin(ts);
            yg = ys + obj.R(Wg)*cos(ts);
            lb = obj.ll + obj.lr;
            lo = obj.Ll + obj.Lr;
-           dmax(1) = obj.ll + obj.lr + tol;
-           dmin(1) = dmax(1) - 2*tol;
-%            dmax(2) = (obj.Ll + obj.Lr);
-%            dmin(2) = (obj.Ll + obj.Lr) - obj.lr;
-%            dmax(3) = dmax(2);
-%            dmin(3) = (obj.Ll + obj.Lr) - obj.ll;
-           dmax(2) = sqrt(lo^2 + obj.delta^2) + tol;
-           dmin(2) = dmax(2) - 2*tol;
-           %Caclculate first distance for comparison
+           rr = sqrt ( (obj.delta)^2 + lo^2);
            if (Wg ~= 3)
                sign = (-1)^Wg;
                Wo = 3 - Wg;
                switch sblk(Wo)
                    case 1
-                       loopnum = 2;
-                       yo  = blk(Wo) * st.riser + obj.R(Wo);
+                       yov = blk(Wo) * st.riser;
+                       yo  = yov + obj.R(Wo);
                        alp = asin( (yg - yo)/ lb );
-                       pmin(1) = abs(yg - yo);
-                       pmax(1) = largenum;
-                   case 2
-                       loopnum = 2;
-                       xo  = (blk(Wo) + 1) * st.tread - obj.R(Wo);
-                       alp = acos( (xg - xo)/ lb );
-                       pmin(1) = abs(xg - xo);
-                       pmax(1) = largenum;
-                   case 3 
-                       loopnum = 2;
-                       y3 = (blk(Wo) + 1) * st.riser;
-                       x3 = (blk(Wo) + 1) * st.tread; 
-                       p = sqrt( (xg - x3)^2 + (yg - y3)^2 );
-                       del = acos( (lb^2 - obj.R(Wo)^2 - p^2) / (2*obj.R(Wo)*p) );
-                       bet = atan( (yg - y3) / (xg - x3) );
-                       th = del + bet - pi/2;
-                       xo = x3 - obj.R(Wo) * sin(th);
-                       yo = x3 + obj.R(Wo) * cos(th);
-                       if( xo > xg || yo > xg || p^2 + obj.R(Wo) < lb^2)
-                           Out = 0;
+                       xo  = xg + sign * lb * cos(alp);
+                       xov = xo;
+                       tho = 0;
+                       if( ~isreal(alp))
+                           obj.val = 0;
                            return;
                        end
-                       pmin(1) = th;
-                       pmax(1) = th;
-                       dmin(1) = 0;
-                       dmax(1) = pi/2;
-                       alp = asin( (p/lb) * sin(del) ) + th - pi/2;
+                   case 2
+                       xov = (blk(Wo) + 1) * st.tread;
+                       xo  = xov - obj.R(Wo);
+                       alp = acos( (xg - xo)/ lb );
+                       yo  = yg + sign * lb * sin(alp);
+                       yov = yo;
+                       tho = pi/2;
+                       if( ~isreal(alp))
+                           obj.val = 0;
+                           return;
+                       end
+                   case 3 
+                       yov = (blk(Wo) + 1) * st.riser;
+                       xov = (blk(Wo) + 1) * st.tread; 
+                       p = sqrt( (xg - xov)^2 + (yg - yov)^2 );
+                       line = (obj.R(Wo)^2 + p^2 - lb^2) / (2*obj.R(Wo)*p);
+                       del = acos( line );
+                       phi = atan( (yg - yov) / (xg - xov) );
+                       tho = del + phi - pi/2;
+                       xo = xov - obj.R(Wo) * sin(tho);
+                       yo = yov + obj.R(Wo) * cos(tho);
+                       alp = asin( (p/lb) * sin(del) ) + tho - pi/2;
+                       if( xo > xg || yo > xg || ~isreal(alp) || ~isreal(alp) || tho < 0 || tho > pi/2)
+                           obj.val = 0;
+                           return;
+                       end
                end
                pivx = xg - obj.delta*sin(alp) + sign * lb * cos(alp) /2;
                pivy = yg + obj.delta*cos(alp) + sign * lb * sin(alp) /2;
                switch sblk(3)
                    case 1
-                       y3 = blk(3) * st.riser + obj.R(3);
-                       pmin(2) = abs(pivy - y3);
-                       pmax(2) = largenum;
+                       y3v = blk(3) * st.riser;
+                       y3  = y3v + obj.R(3);
+                       dly = abs(pivy - y3);
+                       phi = asin(dly / rr);
+                       gam = asin(lo / rr);
+                       bet = gam + phi - pi/2;
+                       x3  = pivx - lo * cos(bet) + obj.delta * sin(bet);
+                       x3v = x3;
+                       th3 = 0;
+                       if (~isreal(bet))
+                           obj.val = 0;
+                           return;
+                       end
                    case 2
-                       x3 = (blk(3) + 1) * st.tread - obj.R(3);
-                       pmin(2) = abs(pivx - x3);
-                       pmax(2) = largenum;
+                       x3v = (blk(3) + 1) * st.tread;
+                       x3  = x3v - obj.R(3);
+                       dlx = abs(pivx - x3);
+                       phi = acos(dlx / rr);
+                       gam = asin(lo / rr);
+                       bet = gam + phi - pi/2;
+                       y3 = pivy - lo * sin(bet) - obj.delta * cos(bet);
+                       y3v = y3;
+                       th3 = pi/2;
+                       if (~isreal(bet))
+                           obj.val = 0;
+                           return;
+                       end
                    case 3
-                       y3min = (blk(3) + 1) * st.riser + obj.R(3);
-                       x3min = (blk(3) + 1) * st.tread; 
-                       y3max = (blk(3) + 1) * st.riser;
-                       x3max = (blk(3) + 1) * st.tread - obj.R(3);
-                       pmin(2) = sqrt((y3min - pivy)^2 + (x3min - pivx)^2);  
-                       pmax(2) = sqrt((y3max - pivy)^2 + (x3max - pivx)^2);
+                       y3v = (blk(3) + 1) * st.riser;
+                       x3v = (blk(3) + 1) * st.tread; 
+                       pe = sqrt( (pivx - x3v)^2 + (pivy - y3v)^2 );
+                       line = (obj.R(3)^2 + pe^2 - rr^2) / (2*obj.R(3)*pe);
+                       del = acos( line );
+                       phi = atan( (pivy - y3v) / (pivx - x3v) );
+                       th3 = del + phi - pi/2;
+                       x3 = x3v - obj.R(3) * sin(th3);
+                       y3 = y3v + obj.R(3) * cos(th3);
+                       phi2 = atan( (pivy - y3) / (pivx - x3));
+                       gam = asin(lo / rr);
+                       bet = gam + phi2 - pi/2;
+                       if (~isreal(bet) || x3 > xo || y3 > yo || th3 > pi/2 || th3 < 0)
+                           obj.val = 0;
+                           return;
+                       end
                end
            end
-           for i = 1:loopnum
-               if (pmin(i) > dmax(i) || pmax(i) < dmin(i))
-                   Out = 0;
-                   return;
-               end
-           end
-           Out = 1;
-%            switch sblk
-%                case 1
-%                    pmin = abs(blk * st.riser + obj.R(Wi) - yg);
-%                    pmax = largenum;
-%                case 2
-%                    pmin = abs((blk + 1) * st.tread - obj.R(Wi) - xg);
-%                    pmax = largenum;
-%                case 3
-%                    ymin = (blk + 1) * st.riser + obj.R(Wi);
-%                    xmin = (blk + 1) * st.tread;
-%                    pmin = sqrt((ymin - yg)^2 + (xmin - xg)^2);    
-%                    ymax = (blk + 1) * st.riser;
-%                    xmax = (blk + 1) * st.tread - obj.R(Wi);
-%                    pmax = sqrt((ymax - yg)^2 + (xmax - xg)^2);
-%                otherwise 
-%                    disp('sblk assignment issue');
-%            end
-%            if (pmin > maxDist || pmax < minDist)
-%                Out = 0;
-%                disp('Distance case called, for block:');
-%                disp(blk);
-%                disp(sblk);
-%                disp("pmin pmax maxDist minDist");
-%                disp(pmin);
-%                disp(pmax);
-%                disp(maxDist);
-%                disp(minDist);
-%            else
-%                Out = 1;
-%            end
+           obj.x(Wg) = xg;
+           obj.x(Wo) = xo;
+           obj.x( 3) = x3;
+           obj.y(Wg) = yg;
+           obj.y(Wo) = yo;
+           obj.y( 3) = y3;
+           obj.th(Wg) = ts;
+           obj.th(Wo) = tho;
+           obj.th( 3) = th3;
+           obj.alpha  = alp;
+           obj.beta   = bet;
+           obj.xcm = x3 + obj.Ll*cos(bet) - (obj.delta + obj.hc)*sin(bet);
+           obj.ycm = y3 + obj.Ll*sin(bet) + (obj.delta + obj.hc)*cos(bet);
+           obj.val = 1;
+           xv(Wg) = xs;
+           xv(Wo) = xov;
+           xv( 3) = x3v;
+           yv(Wg) = ys;
+           yv(Wo) = yov;
+           yv( 3) = y3v;
+           obj.tch = tcheck(obj, st, blk, sblk, xv, yv);
         end
         
+        function Out = tcheck(obj, stair, blk, sblk, x, y)
+            if(sblk(1) == 4)
+                mch = stair.isOnDomain(x(2), y(2), blk(2), sblk(2), obj.R(2));
+                rch = stair.isOnDomain(x(3), y(3), blk(3), sblk(3), obj.R(3));
+                Out = rch && mch;
+            elseif(sblk(2) == 4)
+                fch = stair.isOnDomain(x(1), y(2), blk(1), sblk(1), obj.R(1));
+                rch = stair.isOnDomain(x(2), y(3), blk(3), sblk(3), obj.R(3));
+                Out = rch && fch;
+            elseif(sub(3) == 4)
+                fch = stair.isOnDomain(x(1), y(2), blk(1), sblk(1), obj.R(1));
+                mch = stair.isOnDomain(x(2), y(2), blk(2), sblk(2), obj.R(2));
+                Out = fch && mch;
+            end
+        end
+           
         function draw(obj)
-            p1x = obj.xr - obj.delta * sin(obj.beta);
-            p1y = obj.yr + obj.delta * cos(obj.beta);
+            p1x = obj.x(3) - obj.delta * sin(obj.beta);
+            p1y = obj.y(3) + obj.delta * cos(obj.beta);
             p2x = p1x + (obj.Ll + obj.Lr) * cos(obj.beta);
             p2y = p1y + (obj.Ll + obj.Lr) * sin(obj.beta);
-            p3x = obj.xm - obj.delta * sin(obj.alpha);
-            p3y = obj.ym + obj.delta * cos(obj.alpha);
-            p4x = obj.xf - obj.delta * sin(obj.alpha);
-            p4y = obj.yf + obj.delta * cos(obj.alpha);
-            pp1x = [obj.xr, p1x];
-            pp1y = [obj.yr, p1y];
+            p3x = obj.x(2) - obj.delta * sin(obj.alpha);
+            p3y = obj.y(2) + obj.delta * cos(obj.alpha);
+            p4x = obj.x(1) - obj.delta * sin(obj.alpha);
+            p4y = obj.y(1) + obj.delta * cos(obj.alpha);
+            pp1x = [obj.x(3), p1x];
+            pp1y = [obj.y(3), p1y];
             pp2x = [p1x, p2x];
             pp2y = [p1y, p2y];
-            pp3x = [obj.xm, p3x];
-            pp3y = [obj.ym, p3y];
+            pp3x = [obj.x(2), p3x];
+            pp3y = [obj.y(2), p3y];
             pp4x = [p3x, p4x];
             pp4y = [p3y, p4y];
-            pp5x = [obj.xf, p4x];
-            pp5y = [obj.yf, p4y];
-            circle(obj.xf,obj.yf,obj.R(1));
-            circle(obj.xm,obj.ym,obj.R(2));
-            circle(obj.xr,obj.yr,obj.R(3));
+            pp5x = [obj.x(1), p4x];
+            pp5y = [obj.y(1), p4y];
+            circle(obj.x(1),obj.y(1),obj.R(1));
+            circle(obj.x(2),obj.y(2),obj.R(2));
+            circle(obj.x(3),obj.y(3),obj.R(3));
             plot(pp1x, pp1y);
             plot(pp2x, pp2y);
             plot(pp3x, pp3y);

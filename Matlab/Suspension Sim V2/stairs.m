@@ -93,7 +93,7 @@ classdef stairs < road
                     Output = 1;
                 end
             elseif (sbnum == 2)
-                if ((y > ymax) || (y < ymin))
+                if ((y > ymax) || (y < ymin + R))
                     Output = 0;
                 else
                     Output = 1;

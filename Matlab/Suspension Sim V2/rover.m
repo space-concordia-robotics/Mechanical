@@ -6,13 +6,10 @@ classdef rover
         Lmax
         xcm
         ycm
-        xf
-        yf
-        xm
-        ym
-        xr
-        yr
+        x
+        y
         th
         tch
+        val
     end
 end
