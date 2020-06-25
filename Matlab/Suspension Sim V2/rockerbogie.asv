@@ -18,9 +18,9 @@ classdef rockerbogie < rover
             obj.lr    = bogie_right;
             obj.delta = bogie_height;
             obj.hc    = cg_height;
-            obj.R(1)    = Ra(1);
-            obj.R(2)    = Ra(2);
-            obj.R(3)    = Ra(3);
+            obj.R(1)  = Ra(1);
+            obj.R(2)  = Ra(2);
+            obj.R(3)  = Ra(3);
         end
         
         function F = Staireq(obj, stair, b, bb1, bb2, bb3, xi, yi, thi)
@@ -112,7 +112,7 @@ classdef rockerbogie < rover
             F = vpasolve([eq1, eq2, eq3, eq4, eq5, eq6, eq7, eq8, eq9, eq10, eq11, eq12, eq13], [prx, pry, pmx, pmy, pfx, pfy, thr, thm, thf, alp, bet, ppx, ppy]);
         end
         
-        function obj = DetectPos(obj, Wheelnum, stair, x, y, th)
+        function obj = DetectPos(obj, Wheelnum, stair, x, y, th, i)
             if( stair.isOnstairs(x, y) == 0)
                 disp('ERROR: configurePos input not on stair');
                 return;
@@ -168,7 +168,7 @@ classdef rockerbogie < rover
                             sb(w2) = s2;
                             sb(Wheelnum) = iblk;
                             if (Wheelnum ~= 3)
-                                obj = obj.cForm( stair, Wheelnum, x, y, th, blk, sb);
+                                obj = obj.cForm( stair, Wheelnum, x, y, th, blk, sb, i);
                             else
                                 obj = SolveStEq(obj, stair, blk, sb, x, y, th);
                             end
@@ -216,7 +216,7 @@ classdef rockerbogie < rover
             end
         end
         
-        function obj = cForm(obj, st, Wg, xs, ys, ts, blk, sblk)
+        function obj = cForm(obj, st, Wg, xs, ys, ts, blk, sblk, i)
            xg = xs - obj.R(Wg)*sin(ts);
            yg = ys + obj.R(Wg)*cos(ts);
            lb = obj.ll + obj.lr;
@@ -227,34 +227,37 @@ classdef rockerbogie < rover
                Wo = 3 - Wg;
                switch sblk(Wo)
                    case 1
-                       yo  = blk(Wo) * st.riser + obj.R(Wo);
-                       
+                       yov = blk(Wo) * st.riser;
+                       yo  = yov + obj.R(Wo);
                        alp = asin( (yg - yo)/ lb );
                        xo  = xg + sign * lb * cos(alp);
+                       xov = xo;
                        tho = 0;
                        if( ~isreal(alp))
                            obj.val = 0;
                            return;
                        end
                    case 2
-                       xo  = (blk(Wo) + 1) * st.tread - obj.R(Wo);
+                       xov = (blk(Wo) + 1) * st.tread;
+                       xo  = xov - obj.R(Wo);
                        alp = acos( (xg - xo)/ lb );
                        yo  = yg + sign * lb * sin(alp);
+                       yov = yo;
                        tho = pi/2;
                        if( ~isreal(alp))
                            obj.val = 0;
                            return;
                        end
                    case 3 
-                       yc = (blk(Wo) + 1) * st.riser;
-                       xc = (blk(Wo) + 1) * st.tread; 
-                       p = sqrt( (xg - xc)^2 + (yg - yc)^2 );
-                       line = (lb^2 - obj.R(Wo)^2 - p^2) / (2*obj.R(Wo)*p);
+                       yov = (blk(Wo) + 1) * st.riser;
+                       xov = (blk(Wo) + 1) * st.tread; 
+                       p = sqrt( (xg - xov)^2 + (yg - yov)^2 );
+                       line = (obj.R(Wo)^2 + p^2 - lb^2) / (2*obj.R(Wo)*p);
                        del = acos( line );
-                       phi = atan( (yg - yc) / (xg - xc) );
+                       phi = atan( (yg - yov) / (xg - xov) );
                        tho = del + phi - pi/2;
-                       xo = xc - obj.R(Wo) * sin(tho);
-                       yo = yc + obj.R(Wo) * cos(tho);
+                       xo = xov - obj.R(Wo) * sin(tho);
+                       yo = yov + obj.R(Wo) * cos(tho);
                        alp = asin( (p/lb) * sin(del) ) + tho - pi/2;
                        if( xo > xg || yo > xg || ~isreal(alp) || ~isreal(alp) || tho < 0 || tho > pi/2)
                            obj.val = 0;
@@ -265,88 +268,96 @@ classdef rockerbogie < rover
                pivy = yg + obj.delta*cos(alp) + sign * lb * sin(alp) /2;
                switch sblk(3)
                    case 1
-                       y3  = blk(3) * st.riser + obj.R(3);
+                       y3v = blk(3) * st.riser;
+                       y3  = y3v + obj.R(3);
                        dly = abs(pivy - y3);
                        phi = asin(dly / rr);
                        gam = asin(lo / rr);
                        bet = gam + phi - pi/2;
                        x3  = pivx - lo * cos(bet) + obj.delta * sin(bet);
+                       x3v = x3;
                        th3 = 0;
                        if (~isreal(bet))
                            obj.val = 0;
                            return;
                        end
                    case 2
-                       x3  = (blk(3) + 1) * st.tread - obj.R(3);
+                       x3v = (blk(3) + 1) * st.tread;
+                       x3  = x3v - obj.R(3);
                        dlx = abs(pivx - x3);
                        phi = acos(dlx / rr);
                        gam = asin(lo / rr);
                        bet = gam + phi - pi/2;
                        y3 = pivy - lo * sin(bet) - obj.delta * cos(bet);
+                       y3v = y3;
                        th3 = pi/2;
                        if (~isreal(bet))
                            obj.val = 0;
                            return;
                        end
                    case 3
-                       yc = (blk(Wo) + 1) * st.riser;
-                       xc = (blk(Wo) + 1) * st.tread; 
-                       p = sqrt( (pivx - xc)^2 + (pivy - yc)^2 );
-                       line = (rr^2 - obj.R(Wo)^2 - p^2) / (2*obj.R(Wo)*p);
+                       y3v = (blk(3) + 1) * st.riser;
+                       x3v = (blk(3) + 1) * st.tread; 
+                       pe = sqrt( (pivx - x3v)^2 + (pivy - y3v)^2 );
+                       line = (obj.R(3)^2 + pe^2 - rr^2) / (2*obj.R(3)*pe);
                        del = acos( line );
-                       phi = atan( (pivy - yc) / (pivx - xc) );
+                       phi = atan( (pivy - y3v) / (pivx - x3v) );
                        th3 = del + phi - pi/2;
-                       x3 = xc - obj.R(Wo) * sin(tho);
-                       y3 = yc + obj.R(Wo) * cos(tho);
-                       phi2 = atan( (pivx - x3) / (pivy - y3) );
+                       x3 = x3v - obj.R(3) * sin(th3);
+                       y3 = y3v + obj.R(3) * cos(th3);
+                       phi2 = atan( (pivy - y3) / (pivx - x3));
                        gam = asin(lo / rr);
                        bet = gam + phi2 - pi/2;
-                       if (~isreal(bet) || x3 > xo || y3 > yo)
+                       if (~isreal(bet) || x3 > xo || y3 > yo || th3 > pi/2 || th3 < 0)
                            obj.val = 0;
                            return;
                        end
                end
            end
-           obj.x(Wg) = xg;
-           obj.x(Wo) = xo;
-           obj.x( 3) = x3;
-           obj.y(Wg) = yg;
-           obj.y(Wo) = yo;
-           obj.y( 3) = y3;
-           obj.th(Wg) = ts;
-           obj.th(Wo) = tho;
-           obj.th( 3) = th3;
-           obj.alpha  = alp;
-           obj.beta   = bet;
-           obj.xcm = x3 + obj.Ll*cos(bet) - (obj.delta + obj.hc)*sin(bet);
-           obj.ycm = x3 + obj.Ll*sin(bet) + (obj.delta + obj.hc)*cos(bet);
+           obj.x(i, Wg) = xg;
+           obj.x(i, Wo) = xo;
+           obj.x(i,  3) = x3;
+           obj.y(i, Wg) = yg;
+           obj.y(i, Wo) = yo;
+           obj.y(i,  3) = y3;
+           obj.th(i,Wg) = ts;
+           obj.th(i,Wo) = tho;
+           obj.th(i, 3) = th3;
+           obj.alpha(i)  = alp;
+           obj.beta(i)   = bet;
+           obj.xcm(i) = x3 + obj.Ll*cos(bet) - (obj.delta + obj.hc)*sin(bet);
+           obj.ycm(i) = y3 + obj.Ll*sin(bet) + (obj.delta + obj.hc)*cos(bet);
            obj.val = 1;
-           xv(Wheelnum) = xs;
-           xv(Wo) = 
-           obj.tch = tcheck(obj, st, blk, sblk, obj.x, obj.y);
+           xv(Wg) = xs;
+           xv(Wo) = xov;
+           xv( 3) = x3v;
+           yv(Wg) = ys;
+           yv(Wo) = yov;
+           yv( 3) = y3v;
+           obj.tch = tcheck(obj, st, blk, sblk, xv, yv);
         end
         
-        function Out = tcheck(obj, stair, blk, sblk, x, y, th)
+        function Out = tcheck(obj, stair, blk, sblk, x, y)
             if(sblk(1) == 4)
-                mch = stair.isOnDomain(xs(2), ys(2), blk(2), sblk(2), obj.R(2));
-                rch = stair.isOnDomain(xs(3), ys(3), blk(3), sblk(3), obj.R(3));
+                mch = stair.isOnDomain(x(2), y(2), blk(2), sblk(2), obj.R(2));
+                rch = stair.isOnDomain(x(3), y(3), blk(3), sblk(3), obj.R(3));
                 Out = rch && mch;
             elseif(sblk(2) == 4)
-                fch = stair.isOnDomain(xs(1), ys(2), blk(1), sblk(1), obj.R(1));
-                rch = stair.isOnDomain(xs(2), ys(3), blk(3), sblk(3), obj.R(3));
+                fch = stair.isOnDomain(x(1), y(2), blk(1), sblk(1), obj.R(1));
+                rch = stair.isOnDomain(x(2), y(3), blk(3), sblk(3), obj.R(3));
                 Out = rch && fch;
             elseif(sub(3) == 4)
-                fch = stair.isOnDomain(xs(1), ys(2), blk(1), sblk(1), obj.R(1));
-                mch = stair.isOnDomain(xs(2), ys(2), blk(2), sblk(2), obj.R(2));
+                fch = stair.isOnDomain(x(1), y(2), blk(1), sblk(1), obj.R(1));
+                mch = stair.isOnDomain(x(2), y(2), blk(2), sblk(2), obj.R(2));
                 Out = fch && mch;
             end
         end
            
-        function draw(obj)
-            p1x = obj.x(3) - obj.delta * sin(obj.beta);
-            p1y = obj.y(3) + obj.delta * cos(obj.beta);
-            p2x = p1x + (obj.Ll + obj.Lr) * cos(obj.beta);
-            p2y = p1y + (obj.Ll + obj.Lr) * sin(obj.beta);
+        function draw(obj, i)
+            p1x = obj.x(i, 3) - obj.delta * sin(obj.beta(i));
+            p1y = obj.y(i, 3) + obj.delta * cos(obj.beta(i));
+            p2x = p1x + (obj.Ll + obj.Lr) * cos(obj.beta(i));
+            p2y = p1y + (obj.Ll + obj.Lr) * sin(obj.beta();
             p3x = obj.x(2) - obj.delta * sin(obj.alpha);
             p3y = obj.y(2) + obj.delta * cos(obj.alpha);
             p4x = obj.x(1) - obj.delta * sin(obj.alpha);

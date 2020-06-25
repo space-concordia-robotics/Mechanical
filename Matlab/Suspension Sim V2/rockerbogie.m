@@ -112,7 +112,7 @@ classdef rockerbogie < rover
             F = vpasolve([eq1, eq2, eq3, eq4, eq5, eq6, eq7, eq8, eq9, eq10, eq11, eq12, eq13], [prx, pry, pmx, pmy, pfx, pfy, thr, thm, thf, alp, bet, ppx, ppy]);
         end
         
-        function obj = DetectPos(obj, Wheelnum, stair, x, y, th)
+        function obj = DetectPos(obj, Wheelnum, stair, x, y, th, i)
             if( stair.isOnstairs(x, y) == 0)
                 disp('ERROR: configurePos input not on stair');
                 return;
@@ -168,11 +168,11 @@ classdef rockerbogie < rover
                             sb(w2) = s2;
                             sb(Wheelnum) = iblk;
                             if (Wheelnum ~= 3)
-                                obj = obj.cForm( stair, Wheelnum, x, y, th, blk, sb);
+                                obj = obj.cForm( stair, Wheelnum, x, y, th, blk, sb, i);
                             else
                                 obj = SolveStEq(obj, stair, blk, sb, x, y, th);
                             end
-                            if(obj.tch == 1)
+                            if(obj.tch(i) == 1 && obj.val(i) == 1)
                                 solfound = 1;
                                 disp('SOLUTION INFO');
                                 disp(blk);
@@ -216,7 +216,7 @@ classdef rockerbogie < rover
             end
         end
         
-        function obj = cForm(obj, st, Wg, xs, ys, ts, blk, sblk)
+        function obj = cForm(obj, st, Wg, xs, ys, ts, blk, sblk, i)
            xg = xs - obj.R(Wg)*sin(ts);
            yg = ys + obj.R(Wg)*cos(ts);
            lb = obj.ll + obj.lr;
@@ -234,7 +234,8 @@ classdef rockerbogie < rover
                        xov = xo;
                        tho = 0;
                        if( ~isreal(alp))
-                           obj.val = 0;
+                           obj.val(i) = 0;
+                           obj.tch(i) = 0;
                            return;
                        end
                    case 2
@@ -245,7 +246,8 @@ classdef rockerbogie < rover
                        yov = yo;
                        tho = pi/2;
                        if( ~isreal(alp))
-                           obj.val = 0;
+                           obj.val(i) = 0;
+                           obj.tch(i) = 0;
                            return;
                        end
                    case 3 
@@ -260,7 +262,8 @@ classdef rockerbogie < rover
                        yo = yov + obj.R(Wo) * cos(tho);
                        alp = asin( (p/lb) * sin(del) ) + tho - pi/2;
                        if( xo > xg || yo > xg || ~isreal(alp) || ~isreal(alp) || tho < 0 || tho > pi/2)
-                           obj.val = 0;
+                           obj.val(i) = 0;
+                           obj.tch(i) = 0;
                            return;
                        end
                end
@@ -278,7 +281,8 @@ classdef rockerbogie < rover
                        x3v = x3;
                        th3 = 0;
                        if (~isreal(bet))
-                           obj.val = 0;
+                           obj.val(i) = 0;
+                           obj.tch(i) = 0;
                            return;
                        end
                    case 2
@@ -292,7 +296,8 @@ classdef rockerbogie < rover
                        y3v = y3;
                        th3 = pi/2;
                        if (~isreal(bet))
-                           obj.val = 0;
+                           obj.val(i) = 0;
+                           obj.tch(i) = 0;
                            return;
                        end
                    case 3
@@ -309,32 +314,33 @@ classdef rockerbogie < rover
                        gam = asin(lo / rr);
                        bet = gam + phi2 - pi/2;
                        if (~isreal(bet) || x3 > xo || y3 > yo || th3 > pi/2 || th3 < 0)
-                           obj.val = 0;
+                           obj.val(i) = 0;
+                           obj.tch(i) = 0;
                            return;
                        end
                end
            end
-           obj.x(Wg) = xg;
-           obj.x(Wo) = xo;
-           obj.x( 3) = x3;
-           obj.y(Wg) = yg;
-           obj.y(Wo) = yo;
-           obj.y( 3) = y3;
-           obj.th(Wg) = ts;
-           obj.th(Wo) = tho;
-           obj.th( 3) = th3;
-           obj.alpha  = alp;
-           obj.beta   = bet;
-           obj.xcm = x3 + obj.Ll*cos(bet) - (obj.delta + obj.hc)*sin(bet);
-           obj.ycm = y3 + obj.Ll*sin(bet) + (obj.delta + obj.hc)*cos(bet);
-           obj.val = 1;
+           obj.x(i, Wg) = xg;
+           obj.x(i, Wo) = xo;
+           obj.x(i,  3) = x3;
+           obj.y(i, Wg) = yg;
+           obj.y(i, Wo) = yo;
+           obj.y(i,  3) = y3;
+           obj.th(i,Wg) = ts;
+           obj.th(i,Wo) = tho;
+           obj.th(i, 3) = th3;
+           obj.alpha(i)  = alp;
+           obj.beta(i)   = bet;
+           obj.xcm(i) = x3 + obj.Ll*cos(bet) - (obj.delta + obj.hc)*sin(bet);
+           obj.ycm(i) = y3 + obj.Ll*sin(bet) + (obj.delta + obj.hc)*cos(bet);
+           obj.val(i) = 1;
            xv(Wg) = xs;
            xv(Wo) = xov;
            xv( 3) = x3v;
            yv(Wg) = ys;
            yv(Wo) = yov;
            yv( 3) = y3v;
-           obj.tch = tcheck(obj, st, blk, sblk, xv, yv);
+           obj.tch(i) = tcheck(obj, st, blk, sblk, xv, yv);
         end
         
         function Out = tcheck(obj, stair, blk, sblk, x, y)
@@ -353,34 +359,34 @@ classdef rockerbogie < rover
             end
         end
            
-        function draw(obj)
-            p1x = obj.x(3) - obj.delta * sin(obj.beta);
-            p1y = obj.y(3) + obj.delta * cos(obj.beta);
-            p2x = p1x + (obj.Ll + obj.Lr) * cos(obj.beta);
-            p2y = p1y + (obj.Ll + obj.Lr) * sin(obj.beta);
-            p3x = obj.x(2) - obj.delta * sin(obj.alpha);
-            p3y = obj.y(2) + obj.delta * cos(obj.alpha);
-            p4x = obj.x(1) - obj.delta * sin(obj.alpha);
-            p4y = obj.y(1) + obj.delta * cos(obj.alpha);
-            pp1x = [obj.x(3), p1x];
-            pp1y = [obj.y(3), p1y];
+        function draw(obj, i)
+            p1x = obj.x(i, 3) - obj.delta * sin(obj.beta(i));
+            p1y = obj.y(i, 3) + obj.delta * cos(obj.beta(i));
+            p2x = p1x + (obj.Ll + obj.Lr) * cos(obj.beta(i));
+            p2y = p1y + (obj.Ll + obj.Lr) * sin(obj.beta(i));
+            p3x = obj.x(i,2) - obj.delta * sin(obj.alpha(i));
+            p3y = obj.y(i,2) + obj.delta * cos(obj.alpha(i));
+            p4x = obj.x(i,1) - obj.delta * sin(obj.alpha(i));
+            p4y = obj.y(i,1) + obj.delta * cos(obj.alpha(i));
+            pp1x = [obj.x(i,3), p1x];
+            pp1y = [obj.y(i,3), p1y];
+            pp3x = [obj.x(i,2), p3x];
+            pp3y = [obj.y(i,2), p3y];
+            pp5x = [obj.x(i,1), p4x];
+            pp5y = [obj.y(i,1), p4y];
             pp2x = [p1x, p2x];
             pp2y = [p1y, p2y];
-            pp3x = [obj.x(2), p3x];
-            pp3y = [obj.y(2), p3y];
             pp4x = [p3x, p4x];
             pp4y = [p3y, p4y];
-            pp5x = [obj.x(1), p4x];
-            pp5y = [obj.y(1), p4y];
-            circle(obj.x(1),obj.y(1),obj.R(1));
-            circle(obj.x(2),obj.y(2),obj.R(2));
-            circle(obj.x(3),obj.y(3),obj.R(3));
+            circle(obj.x(i,1),obj.y(i,1),obj.R(1));
+            circle(obj.x(i,2),obj.y(i,2),obj.R(2));
+            circle(obj.x(i,3),obj.y(i,3),obj.R(3));
             plot(pp1x, pp1y);
             plot(pp2x, pp2y);
             plot(pp3x, pp3y);
             plot(pp4x, pp4y);
             plot(pp5x, pp5y);
-            circle(obj.xcm,obj.ycm,25);
+            circle(obj.xcm(i),obj.ycm(i),25);
         end
     end
 end
