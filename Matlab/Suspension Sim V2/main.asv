@@ -1,14 +1,10 @@
 a = stairs(240, 200, 9.8065);
-hold on;
-a.draw_stairs(2000);
 R = [150, 150, 150];
 robert = rockerbogie(481, 194, 225, 225, 170, 94, R);
-%arbitrarily assign an x y theta value for now
-xrand = 1500;
-yrand = 1200;
-th = 0;
-robert = robert.DetectPos(1, a, xrand, yrand, th, 1);
-robert = robert.DetectPos(1, a, xrand, yrand, th, 1);
-robert.draw();
-xlim([-1000 2000])
-ylim([0 3000])
+Lr = [400, 600];
+Ll = [180, 600];
+lr = [155, 300];
+ll = [155, 300];
+db = [155, 200];
+hb = [25, 200];
+robert = robert.Optimize(1, a, Lr, Ll, lr, ll, db, hb, R, 14, 30);

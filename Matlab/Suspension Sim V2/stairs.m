@@ -10,7 +10,7 @@ classdef stairs < road
             obj.tread = t;
             obj.riser = r;
             if (obj.tread ~= 0)
-                obj.slope = atan(obj.riser / obj.tread);
+                obj.slope = obj.riser / obj.tread;
             end
         end
         
@@ -47,7 +47,9 @@ classdef stairs < road
             if (isonriser(obj, x) == 1)
                 high_end = (x / obj.tread) * obj.riser;
                 low_end = high_end - obj.riser;
-                if(y >= high_end || y <= low_end)
+                hdif = y - high_end;
+                ldif = low_end - y;
+                if(hdif > 0.0001 || ldif > 0.0001)
                     output = 0;
                 else
                     output = 1;
