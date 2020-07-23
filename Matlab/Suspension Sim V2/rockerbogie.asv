@@ -1,5 +1,6 @@
 classdef rockerbogie < rover
     properties
+        %Refer to the image for a description of the dimension numbering
         Ll
         Lr
         ll
@@ -11,12 +12,12 @@ classdef rockerbogie < rover
     end
     methods
         function obj = rockerbogie(rocker_left, rocker_right, bogie_left, bogie_right, bogie_height, cg_height, Ra)
-            obj.Ll(1)    = rocker_left;
-            obj.Lr(1)    = rocker_right;
-            obj.ll(1)    = bogie_left;
-            obj.lr(1)    = bogie_right;
-            obj.delta(1) = bogie_height;
-            obj.hc(1)    = cg_height;
+            obj.dim(1, 1)    = rocker_left;
+            obj.dim(1, 2)    = rocker_right;
+            obj.dim(1, 3)    = bogie_left;
+            obj.dim(1, 4)    = bogie_right;
+            obj.dim(1, 5) = bogie_height;
+            obj.dim(1, 6)    = cg_height;
             obj.R(1,1)  = Ra(1);
             obj.R(1,2)  = Ra(2);
             obj.R(1,3)  = Ra(3);
@@ -26,15 +27,15 @@ classdef rockerbogie < rover
         
         function obj = AssignGeometry(obj, rocker_left, rocker_right, bogie_left, bogie_right, bogie_height, cg_height, Ra, c)
             %Defines geometric properties only
-            obj.Ll(c)    = rocker_left;
-            obj.Lr(c)    = rocker_right;
-            obj.ll(c)    = bogie_left;
-            obj.lr(c)    = bogie_right;
-            obj.delta(c) = bogie_height;
-            obj.hc(c)    = cg_height;
-            obj.R(c,1)  = Ra(1);
-            obj.R(c,2)  = Ra(2);
-            obj.R(c,3)  = Ra(3);
+            obj.dim(1, 1)    = rocker_left;
+            obj.dim(1, 2)    = rocker_right;
+            obj.dim(1, 3)    = bogie_left;
+            obj.dim(1, 4)    = bogie_right;
+            obj.dim(1, 5) = bogie_height;
+            obj.dim(1, 6)    = cg_height;
+            obj.R(1,1)  = Ra(1);
+            obj.R(1,2)  = Ra(2);
+            obj.R(1,3)  = Ra(3);
         end
         
         function F = Staireq(obj, stair, b, bb1, bb2, bb3, xi, yi, thi, c)
@@ -44,15 +45,15 @@ classdef rockerbogie < rover
             %bbi = 2 -> step
             %bbi = 3 -> corner
             %bbi = 4 -> input
-            lc = obj.Ll(c) + obj.Lr(c);
+            lc = obj.dim(c, 1) + obj.dim(c, 2);
             inpt = 0;
             syms prx pry pmx pmy pfx pfy thr thm thf alp bet ppx ppy
-            eq1 = prx - obj.R(c,3) * sin(thr) - obj.delta(c) * sin(bet) +     lc * cos(bet) == ppx;
-            eq2 = pry + obj.R(c,3) * cos(thr) + obj.delta(c) * cos(bet) +     lc * sin(bet) == ppy;
-            eq3 = pmx - obj.R(c,2) * sin(thm) - obj.delta(c) * sin(alp) + obj.ll(c) * cos(alp) == ppx;
-            eq4 = pmy + obj.R(c,2) * cos(thm) + obj.delta(c) * cos(alp) + obj.ll(c) * sin(alp) == ppy;
-            eq5 = pfx - obj.R(c,1) * sin(thf) - obj.delta(c) * sin(alp) - obj.lr(c) * cos(alp) == ppx;
-            eq6 = pfy + obj.R(c,1) * cos(thf) + obj.delta(c) * cos(alp) - obj.lr(c) * sin(alp) == ppy;
+            eq1 = prx - obj.R(c,3) * sin(thr) - obj.dim(c, 5) * sin(bet) + lc * cos(bet) == ppx;
+            eq2 = pry + obj.R(c,3) * cos(thr) + obj.dim(c, 5) * cos(bet) + lc * sin(bet) == ppy;
+            eq3 = pmx - obj.R(c,2) * sin(thm) - obj.dim(c, 5) * sin(alp) + obj.dim(c, 3) * cos(alp) == ppx;
+            eq4 = pmy + obj.R(c,2) * cos(thm) + obj.dim(c, 5) * cos(alp) + obj.dim(c, 3) * sin(alp) == ppy;
+            eq5 = pfx - obj.R(c,1) * sin(thf) - obj.dim(c, 5) * sin(alp) - obj.dim(c, 4) * cos(alp) == ppx;
+            eq6 = pfy + obj.R(c,1) * cos(thf) + obj.dim(c, 5) * cos(alp) - obj.dim(c, 4) * sin(alp) == ppy;
             switch bb1
                 case 1
                     eq7  = b(1) * stair.riser       == pfy;
@@ -160,7 +161,7 @@ classdef rockerbogie < rover
                     w1 = 1;
                     w2 = 2;
                 otherwise
-                    disp('Error is Distloop. Incorrect Wheelnum');
+                    disp('Error in Distloop. Incorrect Wheelnum');
             end
             for l1 = bnum:i1:e1
                 if (solfound == 1)
@@ -188,6 +189,9 @@ classdef rockerbogie < rover
                             end
                             if(obj.tch(c, i) == 1 && obj.val(c, i) == 1)
                                 solfound = 1;
+                                if(sb(1) == 2 && sb(2) == 2)
+                                    obj.warn(c) = 1;
+                                end
                                 %disp('SOLUTION INFO');
                                 %disp(blk);
                                 %disp(sb);
@@ -233,8 +237,8 @@ classdef rockerbogie < rover
         function obj = cForm(obj, st, Wg, xs, ys, ts, blk, sblk, c, i)
            xg = xs - obj.R(c, Wg)*sin(ts);
            yg = ys + obj.R(c, Wg)*cos(ts);
-           lb = obj.ll(c) + obj.lr(c);
-           lo = obj.Ll(c) + obj.Lr(c);
+           lb = obj.dim(c, 3) + obj.dim(c, 4);
+           lo = obj.dim(c, 1) + obj.dim(c, 4);
            rr = sqrt ( (obj.delta(c))^2 + lo^2);
            if (Wg ~= 3)
                sign = (-1)^Wg;
@@ -419,6 +423,8 @@ classdef rockerbogie < rover
             it(5) = (db(2) - db(1)) / in;
             it(6) = (hb(2) - hb(1)) / in;
             c = 1;
+            max = 0;
+            min = 999999999999999999;
             for j1 = Lrb(1):it(1):Lrb(2)
                 for j2 = Llb(1):it(2):Llb
                    for j3 = lrb(1):it(3):lrb(2)
@@ -427,14 +433,31 @@ classdef rockerbogie < rover
                                for j6 = hb(1):it(6):hb(2)
                                    obj = obj.AssignGeometry(j2, j1, j4, j3, j5, j6, Rb, c);
                                    disp(c);
-                                   c = c + 1;
-                                   if( (obj.ll(c) + obj.lr(c)) < (obj.R(c, 1) + obj.R(c, 2)) )
-                                       disp(['The following iteration is skipped due to condition 1:' c]);
+                                   if( (j4 + j3) < (Rb(1) + Rb(2)) )
+                                       disp('The following iteration is skipped due to condition 1');
+                                       c = c + 1;
+                                       continue;
+                                   elseif( j2 + j1 - Rb(3) < j4 + Rb(2) )
+                                       disp('The following iteration is skipped due to condition 2');
+                                       c = c + 1;
+                                       continue;
+                                   elseif( Rb(3) + j2 + j1 + j3 + Rb(1) > 1200)
+                                       disp('The following iteration is skipped due to condition 3');
+                                       c = c + 1;
                                        continue;
                                    end
-                                   if( obj.Ll(c) + obj.Lr(c) - obj.R(c, 3) < obj.ll(c) + obj.R(c, 2) )
-                                       
-                                   obj = obj.rapAnimate(st, Wnum, 1200, res, c);
+                                   obj = obj.Drive(st, Wnum, 1000, res, c);
+                                   if( obj.warn(c) == 1)
+                                       disp("WARNING");
+                                   end
+                                   if( obj.difyt(c) > max)
+                                       obj.max = c;
+                                       max = obj.difyt(c);
+                                   elseif( obj.difyt(c) < min)
+                                       obj.min = c;
+                                       min = obj.difyt(c);
+                                   end
+                                   c = c + 1;
                                end
                            end
                        end

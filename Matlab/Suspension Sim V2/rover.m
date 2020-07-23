@@ -1,5 +1,7 @@
 classdef (Abstract) rover
     properties
+        dim
+        dimnum
         R
         Mp
         Mw
@@ -32,7 +34,6 @@ classdef (Abstract) rover
         function obj = Drive(obj, st, wnum, maxx, numi, c)
            obj.difyt(c) = 0;
            obj.warn(c) = 0;
-           xs = st.tread - obj.R(c, 1);
            xi = st.tread - obj.R(c, 1);
            yi = 0;
            thi = 0;
@@ -111,11 +112,10 @@ classdef (Abstract) rover
             xmax(2) = obj.xcmo(obj.max) + maxx;
             ymax(1) = obj.ycmo(obj.max);
             ymax(2) = (xmax(2) - xmax(1))*st.slope + ymax(1);
-            plot(xmin, ymin);
-            plot(obj.xcm(obj.min,:), obj.ycm(obj.min,:));
-            plot(xmax, ymax);
-            plot(obj.xcm(obj.max,:), obj.ycm(obj.max,:));
-            legend('Max actual line', 'Min actual line', 'Min ideal line', 'Max ideal line');
+            plot(xmin, ymin,'DisplayName','Min ideal line');
+            plot(obj.xcm(obj.min,:), obj.ycm(obj.min,:),'DisplayName', 'Min actual line');
+            plot(xmax, ymax,'DisplayName','Max ideal line');
+            plot(obj.xcm(obj.max,:), obj.ycm(obj.max,:),'DisplayName', 'Max actual line');
             hold off;
         end
     end

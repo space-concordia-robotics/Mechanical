@@ -1,5 +1,6 @@
 classdef rockerbogie < rover
     properties
+        %Refer to the image for a description of the dimension numbering
         Ll
         Lr
         ll
@@ -11,12 +12,12 @@ classdef rockerbogie < rover
     end
     methods
         function obj = rockerbogie(rocker_left, rocker_right, bogie_left, bogie_right, bogie_height, cg_height, Ra)
-            obj.Ll(1)    = rocker_left;
-            obj.Lr(1)    = rocker_right;
-            obj.ll(1)    = bogie_left;
-            obj.lr(1)    = bogie_right;
-            obj.delta(1) = bogie_height;
-            obj.hc(1)    = cg_height;
+            obj.dim(1, 1)    = rocker_left;
+            obj.dim(1, 2)    = rocker_right;
+            obj.dim(1, 3)    = bogie_left;
+            obj.dim(1, 4)    = bogie_right;
+            obj.dim(1, 5) = bogie_height;
+            obj.dim(1, 6)    = cg_height;
             obj.R(1,1)  = Ra(1);
             obj.R(1,2)  = Ra(2);
             obj.R(1,3)  = Ra(3);
@@ -26,12 +27,12 @@ classdef rockerbogie < rover
         
         function obj = AssignGeometry(obj, rocker_left, rocker_right, bogie_left, bogie_right, bogie_height, cg_height, Ra, c)
             %Defines geometric properties only
-            obj.Ll(c)    = rocker_left;
-            obj.Lr(c)    = rocker_right;
-            obj.ll(c)    = bogie_left;
-            obj.lr(c)    = bogie_right;
-            obj.delta(c) = bogie_height;
-            obj.hc(c)    = cg_height;
+            obj.dim(c, 1)    = rocker_left;
+            obj.dim(c, 2)    = rocker_right;
+            obj.dim(c, 3)    = bogie_left;
+            obj.dim(c, 4)    = bogie_right;
+            obj.dim(c, 5) = bogie_height;
+            obj.dim(c, 6)    = cg_height;
             obj.R(c,1)  = Ra(1);
             obj.R(c,2)  = Ra(2);
             obj.R(c,3)  = Ra(3);
@@ -44,15 +45,15 @@ classdef rockerbogie < rover
             %bbi = 2 -> step
             %bbi = 3 -> corner
             %bbi = 4 -> input
-            lc = obj.Ll(c) + obj.Lr(c);
+            lc = obj.dim(c, 1) + obj.dim(c, 2);
             inpt = 0;
             syms prx pry pmx pmy pfx pfy thr thm thf alp bet ppx ppy
-            eq1 = prx - obj.R(c,3) * sin(thr) - obj.delta(c) * sin(bet) +     lc * cos(bet) == ppx;
-            eq2 = pry + obj.R(c,3) * cos(thr) + obj.delta(c) * cos(bet) +     lc * sin(bet) == ppy;
-            eq3 = pmx - obj.R(c,2) * sin(thm) - obj.delta(c) * sin(alp) + obj.ll(c) * cos(alp) == ppx;
-            eq4 = pmy + obj.R(c,2) * cos(thm) + obj.delta(c) * cos(alp) + obj.ll(c) * sin(alp) == ppy;
-            eq5 = pfx - obj.R(c,1) * sin(thf) - obj.delta(c) * sin(alp) - obj.lr(c) * cos(alp) == ppx;
-            eq6 = pfy + obj.R(c,1) * cos(thf) + obj.delta(c) * cos(alp) - obj.lr(c) * sin(alp) == ppy;
+            eq1 = prx - obj.R(c,3) * sin(thr) - obj.dim(c, 5) * sin(bet) + lc * cos(bet) == ppx;
+            eq2 = pry + obj.R(c,3) * cos(thr) + obj.dim(c, 5) * cos(bet) + lc * sin(bet) == ppy;
+            eq3 = pmx - obj.R(c,2) * sin(thm) - obj.dim(c, 5) * sin(alp) + obj.dim(c, 3) * cos(alp) == ppx;
+            eq4 = pmy + obj.R(c,2) * cos(thm) + obj.dim(c, 5) * cos(alp) + obj.dim(c, 3) * sin(alp) == ppy;
+            eq5 = pfx - obj.R(c,1) * sin(thf) - obj.dim(c, 5) * sin(alp) - obj.dim(c, 4) * cos(alp) == ppx;
+            eq6 = pfy + obj.R(c,1) * cos(thf) + obj.dim(c, 5) * cos(alp) - obj.dim(c, 4) * sin(alp) == ppy;
             switch bb1
                 case 1
                     eq7  = b(1) * stair.riser       == pfy;
@@ -160,7 +161,7 @@ classdef rockerbogie < rover
                     w1 = 1;
                     w2 = 2;
                 otherwise
-                    disp('Error is Distloop. Incorrect Wheelnum');
+                    disp('Error in Distloop. Incorrect Wheelnum');
             end
             for l1 = bnum:i1:e1
                 if (solfound == 1)
@@ -236,9 +237,9 @@ classdef rockerbogie < rover
         function obj = cForm(obj, st, Wg, xs, ys, ts, blk, sblk, c, i)
            xg = xs - obj.R(c, Wg)*sin(ts);
            yg = ys + obj.R(c, Wg)*cos(ts);
-           lb = obj.ll(c) + obj.lr(c);
-           lo = obj.Ll(c) + obj.Lr(c);
-           rr = sqrt ( (obj.delta(c))^2 + lo^2);
+           lb = obj.dim(c, 3) + obj.dim(c, 4);
+           lo = obj.dim(c, 1) + obj.dim(c, 2);
+           rr = sqrt ( (obj.dim(c, 5))^2 + lo^2);
            if (Wg ~= 3)
                sign = (-1)^Wg;
                Wo = 3 - Wg;
@@ -284,8 +285,8 @@ classdef rockerbogie < rover
                            return;
                        end
                end
-               pivx = xg - obj.delta(c) *sin(alp) + sign * lb * cos(alp) /2;
-               pivy = yg + obj.delta(c) *cos(alp) + sign * lb * sin(alp) /2;
+               pivx = xg - obj.dim(c, 5) *sin(alp) + sign * lb * cos(alp) /2;
+               pivy = yg + obj.dim(c, 5) *cos(alp) + sign * lb * sin(alp) /2;
                switch sblk(3)
                    case 1
                        y3v = blk(3) * st.riser;
@@ -294,7 +295,7 @@ classdef rockerbogie < rover
                        phi = asin(dly / rr);
                        gam = asin(lo / rr);
                        bet = gam + phi - pi/2;
-                       x3  = pivx - lo * cos(bet) + obj.delta(c) * sin(bet);
+                       x3  = pivx - lo * cos(bet) + obj.dim(c, 5) * sin(bet);
                        x3v = x3;
                        th3 = 0;
                        if (~isreal(bet) || isempty(bet) || isnan(bet))
@@ -309,7 +310,7 @@ classdef rockerbogie < rover
                        phi = acos(dlx / rr);
                        gam = asin(lo / rr);
                        bet = gam + phi - pi/2;
-                       y3 = pivy - lo * sin(bet) - obj.delta(c) * cos(bet);
+                       y3 = pivy - lo * sin(bet) - obj.dim(c, 5) * cos(bet);
                        y3v = y3;
                        th3 = pi/2;
                        if (~isreal(bet) || isempty(bet) || isnan(bet))
@@ -348,8 +349,8 @@ classdef rockerbogie < rover
            obj.th(c, i, 3) = th3;
            obj.alpha(c, i)  = alp;
            obj.beta(c, i)   = bet;
-           obj.xcm(c, i) = x3 + obj.Ll(c)*cos(bet) - (obj.delta(c) + obj.hc(c))*sin(bet);
-           obj.ycm(c, i) = y3 + obj.Ll(c)*sin(bet) + (obj.delta(c) + obj.hc(c))*cos(bet);
+           obj.xcm(c, i) = x3 + obj.dim(c, 1)*cos(bet) - (obj.dim(c, 5) + obj.dim(c, 6))*sin(bet);
+           obj.ycm(c, i) = y3 + obj.dim(c, 1)*sin(bet) + (obj.dim(c, 5) + obj.dim(c, 6))*cos(bet);
            obj.val(c, i) = 1;
            xv(Wg) = xs;
            xv(Wo) = xov;
@@ -379,14 +380,14 @@ classdef rockerbogie < rover
         function draw(obj, c, i)
             %Creates a drawing of the rover as the plot. Takes into account
             %the current orientation of each link.
-            p1x = obj.x(c, i, 3) - obj.delta(c) * sin(obj.beta(c, i));
-            p1y = obj.y(c, i, 3) + obj.delta(c) * cos(obj.beta(c, i));
-            p2x = p1x + (obj.Ll(c) + obj.Lr(c)) * cos(obj.beta(c, i));
-            p2y = p1y + (obj.Ll(c) + obj.Lr(c)) * sin(obj.beta(c, i));
-            p3x = obj.x(c, i,2) - obj.delta(c) * sin(obj.alpha(c, i));
-            p3y = obj.y(c, i,2) + obj.delta(c) * cos(obj.alpha(c, i));
-            p4x = obj.x(c, i,1) - obj.delta(c) * sin(obj.alpha(c, i));
-            p4y = obj.y(c, i,1) + obj.delta(c) * cos(obj.alpha(c, i));
+            p1x = obj.x(c, i, 3) - obj.dim(c, 5) * sin(obj.beta(c, i));
+            p1y = obj.y(c, i, 3) + obj.dim(c, 5) * cos(obj.beta(c, i));
+            p2x = p1x + (obj.dim(c, 1) + obj.dim(c, 2)) * cos(obj.beta(c, i));
+            p2y = p1y + (obj.dim(c, 1) + obj.dim(c, 2)) * sin(obj.beta(c, i));
+            p3x = obj.x(c, i, 2) - obj.dim(c, 5) * sin(obj.alpha(c, i));
+            p3y = obj.y(c, i, 2) + obj.dim(c, 5) * cos(obj.alpha(c, i));
+            p4x = obj.x(c, i, 1) - obj.dim(c, 5) * sin(obj.alpha(c, i));
+            p4y = obj.y(c, i, 1) + obj.dim(c, 5) * cos(obj.alpha(c, i));
             pp1x = [obj.x(c, i,3), p1x];
             pp1y = [obj.y(c, i,3), p1y];
             pp3x = [obj.x(c, i,2), p3x];
