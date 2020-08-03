@@ -1,12 +1,11 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Method circle
-% Purpose: Creates a drawing of the rover as the plot. Takes into account
-%          the current coordinates and orientation of each link.
+% Purpose: Plot a circle of provided dimensions.
 % Parameters:
-%       obj -- the object to be drawn.
-%       c -- the configuration of the object to be drawn.
-%       i -- the iteration of the object to be drawn.
-% Returns: NONE
+%       x -- x coordinate of the center of the circle.
+%       x -- y coordinate of the center of the circle.
+%       r -- radius of the circle.
+% Returns: The plot object corresponding to the circle.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function h = circle(x,y,r)
     th = 0:pi/50:2*pi;
