@@ -19,9 +19,10 @@ classdef rockerbogie < rover
 % Parameters: See the AssignGeometry method - The properties are the same.
 % Returns: The object which is being initialized.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        function obj = rockerbogie(rocker_left, rocker_right, bogie_left, bogie_right, bogie_height, cg_height, Ra)
+        function obj = rockerbogie(rocker_left, rocker_right, bogie_left, bogie_right, bogie_height, cg_height, Ra, lmax)
             AssignGeometry(obj, rocker_left, rocker_right, bogie_left, bogie_right, bogie_height, cg_height, Ra, 1);
             obj.difyt = 0;
+            obj.lmax = lmax;
         end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Method AssignGeometry
@@ -56,15 +57,15 @@ classdef rockerbogie < rover
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         function obj = AssignGeometry(obj, rocker_left, rocker_right, bogie_left, bogie_right, bogie_height, cg_height, Ra, c)
             %Defines geometric properties only
-            obj.dim(c, 1)    = rocker_left;
-            obj.dim(c, 2)    = rocker_right;
-            obj.dim(c, 3)    = bogie_left;
-            obj.dim(c, 4)    = bogie_right;
+            obj.dim(c, 1) = rocker_left;
+            obj.dim(c, 2) = rocker_right;
+            obj.dim(c, 3) = bogie_left;
+            obj.dim(c, 4) = bogie_right;
             obj.dim(c, 5) = bogie_height;
-            obj.dim(c, 6)    = cg_height;
-            obj.R(c,1)  = Ra(1);
-            obj.R(c,2)  = Ra(2);
-            obj.R(c,3)  = Ra(3);
+            obj.dim(c, 6) = cg_height;
+            obj.R(c,1) = Ra(1);
+            obj.R(c,2) = Ra(2);
+            obj.R(c,3) = Ra(3);
         end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Method DetectPos
@@ -622,7 +623,7 @@ classdef rockerbogie < rover
                                        disp('The following iteration is skipped due to condition 2');
                                        c = c + 1;
                                        continue;
-                                   elseif( Rb(3) + j2 + j1 + j3 + Rb(1) > 1200)
+                                   elseif( Rb(3) + j2 + j1 + j3 + Rb(1) > obj.lmax)
                                        disp('The following iteration is skipped due to condition 3');
                                        c = c + 1;
                                        continue;

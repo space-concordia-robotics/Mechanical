@@ -1,6 +1,6 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %              MARS ROVER QUASI STATIC GEOMETRY OPTIMIZATION   
-%                              VERSION: 0.2.2
+%                              VERSION: 0.2.3
 % Author: Maxim Kaller
 % Description: 
 % Units: 
@@ -59,15 +59,13 @@
 % TO DO (must be complete before work on next major release can begin):
 % - Reorganize optimization into a single loop using the dim property.
 % - Same as above, move Optimize function to the rover class.
-% - Make code use Lmax instead of 1.2 (set up Lmax in constructor).
 % - Remove usage of ycmo and xcmo properties.
-% - Output total runtime of script at the end.
 % - Create baseline configuration and use as a reference.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 tic;
 a = stairs(240, 200, 9.8065);
 R = [150, 150, 150];
-robert = rockerbogie(481, 194, 225, 225, 170, 94, R);
+robert = rockerbogie(481, 194, 225, 225, 170, 94, R, 1200);
 Lr = [400, 600];
 Ll = [180, 600];
 lr = [155, 300];
