@@ -1,6 +1,6 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %              MARS ROVER QUASI STATIC GEOMETRY OPTIMIZATION   
-%                              VERSION: 0.2.3
+%                              VERSION: 0.3.0
 % Author: Maxim Kaller
 % Description: 
 % Units: 
@@ -57,22 +57,22 @@
 %           under a single rover configuration.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % TO DO (must be complete before work on next major release can begin):
-% - Reorganize optimization into a single loop using the dim property.
-% - Same as above, move Optimize function to the rover class.
 % - Remove usage of ycmo and xcmo properties.
 % - Create baseline configuration and use as a reference.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 tic;
 a = stairs(240, 200, 9.8065);
 R = [150, 150, 150];
-robert = rockerbogie(481, 194, 225, 225, 170, 94, R, 1200);
+dims = [481, 194, 225, 225, 170, 94];
+robert = rockerbogie(dims, R, 1200);
 Lr = [400, 600];
 Ll = [180, 600];
 lr = [155, 300];
 ll = [155, 300];
 db = [155, 200];
 hb = [25, 200];
-robert = robert.Optimize(1, a, Lr, Ll, lr, ll, db, hb, R, 3, 15);
+lims = [400, 600; 180, 600; 155, 300; 155, 300; 155, 200; 25, 200];
+robert = robert.Optimize(1, a, R, lims, 3, 50);
 robert.CompareCG(a, 1000)
 endmessage = ['Total run time: ', num2str(toc), ' seconds'];
 disp(endmessage);

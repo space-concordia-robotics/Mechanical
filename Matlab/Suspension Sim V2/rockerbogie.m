@@ -19,53 +19,12 @@ classdef rockerbogie < rover
 % Parameters: See the AssignGeometry method - The properties are the same.
 % Returns: The object which is being initialized.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        function obj = rockerbogie(rocker_left, rocker_right, bogie_left, bogie_right, bogie_height, cg_height, Ra, lmax)
-            AssignGeometry(obj, rocker_left, rocker_right, bogie_left, bogie_right, bogie_height, cg_height, Ra, 1);
+        function obj = rockerbogie(dims, Ra, lmax)
+            obj.dimnum = 6;
+            obj.rnum = 3;
+            AssignGeometry(obj, dims, Ra, 1);
             obj.difyt = 0;
             obj.lmax = lmax;
-        end
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Method AssignGeometry
-% Purpose: Defines the dimensions of the rockerbogie's geometry.
-% Parameters:
-%       obj -- the rockerbogie object to modify.
-%       rocker_left -- the length of the rocker to the left of the centre
-%                      of gravity. The first item in the dim property 
-%                      (rover class property).
-%       rocker_right -- the length of the rocker to the right of the centre
-%                       of gravity. The second item in the dim property
-%                       (rover class property).
-%       bogie_left -- the length of the bogie to the left of the bogie's
-%                     pivot point. The third item in the dim property
-%                     (rover class property).
-%       bogie_right -- the length of the bogie to the right of the bogie's
-%                      pivot point. The fourth item in the dim property
-%                      (rover class property).
-%       bogie_height -- when the rover sits on flat ground, the vertical
-%                       distance between the center of the wheels and the
-%                       bogie's pivot point. The fifth item in the dim
-%                       property (rover class property).
-%       cg_height -- when the rover sits on flat ground, the vertical
-%                    distance between the center of the wheels and the
-%                    rover's centre of gravity. The sixth item in the dim
-%                    property (rover class property).
-%       Ra -- 1D array with three elements denoting the radius of each 
-%             wheel starting the the front most and ending with the rear 
-%             most.
-%       c -- the configuration whose dimensions are defined.
-% Returns: The object whose dimensions are defined.
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        function obj = AssignGeometry(obj, rocker_left, rocker_right, bogie_left, bogie_right, bogie_height, cg_height, Ra, c)
-            %Defines geometric properties only
-            obj.dim(c, 1) = rocker_left;
-            obj.dim(c, 2) = rocker_right;
-            obj.dim(c, 3) = bogie_left;
-            obj.dim(c, 4) = bogie_right;
-            obj.dim(c, 5) = bogie_height;
-            obj.dim(c, 6) = cg_height;
-            obj.R(c,1) = Ra(1);
-            obj.R(c,2) = Ra(2);
-            obj.R(c,3) = Ra(3);
         end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Method DetectPos
@@ -562,90 +521,45 @@ classdef rockerbogie < rover
             circle(obj.xcm(c, i),obj.ycm(c, i),25);
         end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Method Optimize
-% Purpose: Based on input dimensional limits, a defined number of
-%          configurations are created and a trial is run per configuration.
-%          During each trial the vertical center of gravity difference is
-%          calculated and the best and worse configurations are stored in
-%          the min and max class properties, respectively. 
-%          NOTE 1: This method will be moved to the rover class in a
-%                  subsequent update and will be implemented in a more
-%                  generalized way.
-%          NOTE 2: A future force analysis module will be implemented to
-%                  provide further optimization data in the future.
+% Method draw
+% Purpose: Creates a drawing of the rover as the plot. Takes into account
+%          the current coordinates and orientation of each link. This
+%          drawing is shown in a given app.
 % Parameters:
-%       obj -- the object to be optimized.
-%       Wnum -- the wheel which will be used to loop through the stair as
-%               the trial input.
-%       st -- the stair used for the optimization.
-%       Lrb -- an array of min and max possible values for dim(1).
-%       Llb -- an array of min and max possible values for dim(2).
-%       lrb -- an array of min and max possible values for dim(3).
-%       llb -- an array of min and max possible values for dim(4).
-%       db -- an array of min and max possible values for dim(5).
-%       hb -- an array of min and max possible values for dim(6).
-%       Rb -- An array for the wheel dimensions of the rover. The current
-%             optimization strategy does not optimize wheel size.
-%       in -- The number of iterations per dimension. In reality roughly
-%             (in + 1)^(dimnum - 1) total iteraions will be run.
-%       res -- the resolution of each trial. Each trial will consist of res
-%              amount of snapshots on the stairs.
-% Returns: The optimized object with its min and max properties filled.
+%       obj -- the object to be drawn.
+%       app -- The app window where the rover will be drawn.
+%       c -- the configuration of the object to be drawn.
+%       i -- the iteration of the object to be drawn.
+% Returns: NONE
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        function obj = Optimize(obj, Wnum, st, Lrb, Llb, lrb, llb, db, hb, Rb, in, res)
-            %Currently, the function does not optimise for wheel size,
-            %although it can easily be adjusted to do so, but the
-            %assumption is that we are currently buying wheels and it is
-            %outside of our control. Rb is thus just a 3 item array with
-            %each wheel radius. 
-            it(1) = (Lrb(2) - Lrb(1)) / in;
-            it(2) = (Llb(2) - Llb(1)) / in;
-            it(3) = (lrb(2) - lrb(1)) / in;
-            it(4) = (llb(2) - llb(1)) / in;
-            it(5) = (db(2) - db(1)) / in;
-            it(6) = (hb(2) - hb(1)) / in;
-            c = 1;
-            max = 0;
-            min = 999999999999999999;
-            for j1 = Lrb(1):it(1):Lrb(2)
-                for j2 = Llb(1):it(2):Llb
-                   for j3 = lrb(1):it(3):lrb(2)
-                       for j4 = llb(1):it(4):llb(2)
-                           for j5 = db(1):it(5):db(2)
-                               for j6 = hb(1):it(6):hb(2)
-                                   obj = obj.AssignGeometry(j2, j1, j4, j3, j5, j6, Rb, c);
-                                   disp(c);
-                                   if( (j4 + j3) < (Rb(1) + Rb(2)) )
-                                       disp('The following iteration is skipped due to condition 1');
-                                       c = c + 1;
-                                       continue;
-                                   elseif( j2 + j1 - Rb(3) < j4 + Rb(2) )
-                                       disp('The following iteration is skipped due to condition 2');
-                                       c = c + 1;
-                                       continue;
-                                   elseif( Rb(3) + j2 + j1 + j3 + Rb(1) > obj.lmax)
-                                       disp('The following iteration is skipped due to condition 3');
-                                       c = c + 1;
-                                       continue;
-                                   end
-                                   obj = obj.Drive(st, Wnum, 1000, res, c);
-                                   if( obj.warn(c) == 1)
-                                       disp("WARNING");
-                                   end
-                                   if( obj.difyt(c) > max)
-                                       obj.max = c;
-                                       max = obj.difyt(c);
-                                   elseif( obj.difyt(c) < min)
-                                       obj.min = c;
-                                       min = obj.difyt(c);
-                                   end
-                                   c = c + 1;
-                               end
-                           end
-                       end
-                   end
-                end
-            end
+        function appdraw(obj, app, c, i)
+            p1x = obj.x(c, i, 3) - obj.dim(c, 5) * sin(obj.beta(c, i));
+            p1y = obj.y(c, i, 3) + obj.dim(c, 5) * cos(obj.beta(c, i));
+            p2x = p1x + (obj.dim(c, 1) + obj.dim(c, 2)) * cos(obj.beta(c, i));
+            p2y = p1y + (obj.dim(c, 1) + obj.dim(c, 2)) * sin(obj.beta(c, i));
+            p3x = obj.x(c, i, 2) - obj.dim(c, 5) * sin(obj.alpha(c, i));
+            p3y = obj.y(c, i, 2) + obj.dim(c, 5) * cos(obj.alpha(c, i));
+            p4x = obj.x(c, i, 1) - obj.dim(c, 5) * sin(obj.alpha(c, i));
+            p4y = obj.y(c, i, 1) + obj.dim(c, 5) * cos(obj.alpha(c, i));
+            pp1x = [obj.x(c, i,3), p1x];
+            pp1y = [obj.y(c, i,3), p1y];
+            pp3x = [obj.x(c, i,2), p3x];
+            pp3y = [obj.y(c, i,2), p3y];
+            pp5x = [obj.x(c, i,1), p4x];
+            pp5y = [obj.y(c, i,1), p4y];
+            pp2x = [p1x, p2x];
+            pp2y = [p1y, p2y];
+            pp4x = [p3x, p4x];
+            pp4y = [p3y, p4y];
+            circleUI(app, obj.x(c, i,1),obj.y(c, i,1),obj.R(c, 1));
+            circleUI(app, obj.x(c, i,2),obj.y(c, i,2),obj.R(c, 2));
+            circleUI(app, obj.x(c, i,3),obj.y(c, i,3),obj.R(c, 3));
+            plot(app.UIAxes, pp1x, pp1y);
+            plot(app.UIAxes, pp2x, pp2y);
+            plot(app.UIAxes, pp3x, pp3y);
+            plot(app.UIAxes, pp4x, pp4y);
+            plot(app.UIAxes, pp5x, pp5y);
+            circleUI(app, obj.xcm(c, i),obj.ycm(c, i),25);
         end
     end
 end

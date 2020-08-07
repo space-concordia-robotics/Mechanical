@@ -31,6 +31,11 @@ classdef stairs < road
                 obj.slope = obj.riser / obj.tread;
             end
         end
+        
+        function obj = assignGeometry(obj, t, r)
+            obj.tread = t;
+            obj.riser = r;
+        end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Method isOnStep
 % Purpose: Determines whether the specifies input coordinate is on a step
@@ -133,7 +138,14 @@ classdef stairs < road
                 xmin = -largenum;
             end
         end
-        
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Method detectBlock
+% Purpose: Detect the block number of the provided x coordinate.
+% Parameters: 
+%       obj -- the stair object used in the comparison.
+%       x -- the coordinate whose block number will be detected.
+% Returns: The relevant block number.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         function output = detectBlock(obj, x)
             bnum = ceil(x / obj.tread) - 1;
             if (bnum < 0) 
@@ -195,6 +207,20 @@ classdef stairs < road
             x = linspace(0, length, 10000);
             y = (obj.riser ) * floor(x / obj.tread);
             plot(x, y);
+        end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Method app_draw
+% Purpose: Generate a plot (y vs x) of the stairs on an app window.
+% Parameters: 
+%       obj -- the stair object to be plotted.
+%       app -- the app where the stairs will be displayed.
+%       length -- the maximum x coordinate to be drawn.
+% Returns: NONE
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        function app_draw(obj, app, length)
+            x = linspace(0, length, 10000);
+            y = (obj.riser ) * floor(x / obj.tread);
+            plot(app.UIAxes, x, y);
         end
     end    
 end
