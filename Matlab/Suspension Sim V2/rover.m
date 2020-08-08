@@ -161,50 +161,26 @@ classdef (Abstract) rover
 %          coordinates. The difyt value of the configuration is also
 %          defined with the sum of all difyt values.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        function obj = Drive(obj, st, wnum, maxx, numi, c)
+        function obj = Drive(obj, st, wnum, maxx, pitch, c)
+           %Some initializations
            obj.difyt(c) = 0;
            obj.warn(c) = 0;
            obj.maxx = maxx;
-           xi = st.tread - obj.R(c, 1);
-           yi = 0;
+           xi = st.tread;
+           yi = obj.R(c,1);
            thi = 0;
-           bnum = floor(maxx / st.tread);
-           sbnum = 3*bnum + (maxx - bnum * st.tread) / st.tread;
-           ith = floor( numi/ sbnum );
-           dx = (st.tread - obj.R(c, wnum)) / ith;
-           dy = (st.riser - obj.R(c, wnum)) / ith;
-           dth = pi/ (2 * ith);
-           obj.its = numi;
-           cas = 0;
-           for i = 1:numi
-               itnum = floor(i / ith);
-               bnum = floor(itnum / 3);
-               sbi = mod(itnum, 3) + 1;
-               if(i ~= 1)
-                   switch sbi
-                       case 1
-                           cas = 1;
-                           xi = xi + dx;
-                           yi = bnum * st.riser;
-                           thi = 0;
-                       case 2
-                           if ( cas ~= 2)
-                               yi = yi + obj.R(c, wnum);
-                           end
-                           cas = 2;
-                           yi = yi + dy;
-                           xi = (bnum + 1) * st.tread;
-                           thi = pi/2;
-                       case 3
-                           if (cas ~= 3)
-                               thi = pi /2;
-                           end
-                           cas = 3;
-                           thi = thi - dth;
-                           xi = (bnum + 1) * st.tread;
-                           yi = (bnum + 1) * st.riser;
-                   end
-               end
+           bnum = 0;
+           sb = 2;
+           %Determine important generic values
+           totalblock = floor(maxx / st.tread);
+           sbnum = 3*totalblock + (maxx - totalblock * st.tread) / st.tread;
+           totalits = floor(sbnum * pitch);
+           dx = (st.tread - obj.R(c, wnum)) / pitch;
+           dy = (st.riser - obj.R(c, wnum)) / pitch;
+           dth = pi/ (2 * pitch);
+           obj.its = totalits;
+           for i = 1:totalits
+               %Solve position and interpret results
                obj = DetectPos(obj, wnum, st, xi, yi, thi, c, i);
                if (i == 1)
                    obj.xcmo(c) = obj.xcm(c, 1);
@@ -222,6 +198,36 @@ classdef (Abstract) rover
                    obj.dify(c, i) = ( yt - obj.ycm(i) )^2;
                end
                obj.difyt(c) = obj.difyt(c) + obj.dify(c, i);
+               %Determine next position of input wheel
+               switch sb
+                   case 1
+                       xi = xi + dx;
+                       yi = bnum * st.riser;
+                       thi = 0;
+                       if( xi - bnum * st.tread > st.tread - obj.R(wnum) )
+                           xi = (bnum + 1)*st.tread;
+                           yi = yi + obj.R(wnum);
+                           sb = 2;
+                       end
+                   case 2
+                       yi = yi + dy;
+                       xi = (bnum + 1) * st.tread;
+                       thi = pi/2;
+                       if(yi > (bnum + 1) *  st.riser)
+                           xi = (bnum + 1) * st.tread;
+                           yi = (bnum + 1) * st.riser;
+                           sb = 3;
+                       end
+                   case 3
+                       thi = thi - dth;
+                       xi = (bnum + 1) * st.tread;
+                       yi = (bnum + 1) * st.riser;
+                       if (thi < 0)
+                           bnum = bnum + 1;
+                           sb = 1;
+                           thi = 0;
+                       end
+               end
            end
         end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -257,7 +263,8 @@ classdef (Abstract) rover
             %although it can easily be adjusted to do so, but the
             %assumption is that we are currently buying wheels and it is
             %outside of our control. Rb is thus just a 3 item array with
-            %each wheel radius. 
+            %each wheel radius.
+            obj.maxx = 1000;
             obj.res = res;
             it = zeros(obj.dimnum);
             dimi = zeros(obj.dimnum);
@@ -297,7 +304,7 @@ classdef (Abstract) rover
                     allow = 0;
                 end
                 if(allow == 1)
-                    obj = obj.Drive(st, Wnum, 1000, res, c);
+                    obj = obj.Drive(st, Wnum, obj.maxx, res, c);
                     if (obj.warn(c) == 1)
                        disp("WARNING!"); 
                     end

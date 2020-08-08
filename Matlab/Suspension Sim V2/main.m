@@ -1,6 +1,6 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %              MARS ROVER QUASI STATIC GEOMETRY OPTIMIZATION   
-%                              VERSION: 0.3.0
+%                              VERSION: 0.3.1
 % Author: Maxim Kaller
 % Description: 
 % Units: 
@@ -72,7 +72,9 @@ ll = [155, 300];
 db = [155, 200];
 hb = [25, 200];
 lims = [400, 600; 180, 600; 155, 300; 155, 300; 155, 200; 25, 200];
-robert = robert.Optimize(1, a, R, lims, 3, 50);
-robert.CompareCG(a, 1000)
+robert = robert.Optimize(1, a, R, lims, 3, 8);
+%robert.CompareCG(a, 1000)
 endmessage = ['Total run time: ', num2str(toc), ' seconds'];
 disp(endmessage);
+disp(robert.x(1,1,1));
+disp(robert.x(1,2,1));
