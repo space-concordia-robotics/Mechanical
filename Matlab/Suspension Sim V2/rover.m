@@ -168,7 +168,7 @@ classdef (Abstract) rover
            obj.maxx = maxx;
            xi = st.tread;
            yi = obj.R(c,1);
-           thi = 0;
+           thi = pi/2;
            bnum = 0;
            sb = 2;
            %Determine important generic values
@@ -207,6 +207,7 @@ classdef (Abstract) rover
                        if( xi - bnum * st.tread > st.tread - obj.R(wnum) )
                            xi = (bnum + 1)*st.tread;
                            yi = yi + obj.R(wnum);
+                           thi = pi/2;
                            sb = 2;
                        end
                    case 2
@@ -288,6 +289,7 @@ classdef (Abstract) rover
 %             obj.dify = zeros([totalin res]);
 %             obj.dify = zeros(totalin);
 %             obj.warn = zeros(totalin);
+            obj.dim = zeros(totalin, obj.dimnum);
             %end initialization
             for c = 1:totalin
                 obj = obj.AssignGeometry(dimi, Rb, c);
@@ -369,7 +371,7 @@ classdef (Abstract) rover
                cla(app.UIAxes);
                st.app_draw(app, 1.25 * obj.x(c, obj.its, 1) );
                obj.appdraw(app, c, i);
-               pause(obj.res/480);
+               pause(obj.res/4);
             end
         end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
