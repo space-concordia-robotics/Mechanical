@@ -28,19 +28,9 @@ classdef (Abstract) rover
         %The x coordinate of the center of mass.
         %STRUCTURE: xcm(configuration, iteration)
         xcm
-        %The x coordinate of the center of mass of the starting point of
-        %the iteration. NOTE: This property will be removed from subsequent
-        %releases of the script. 
-        %STRUCTURE: xcmo(configuration)
-        xcmo
         %The y coordinate of the center of mass 
         %STRUCTURE: ycm(configuration, iteration)
-        ycm 
-        %The y coordinate of the center of mass of the starting point of
-        %the iteration. NOTE: This property will be removed from subsequent
-        %releases of the script. 
-        %STRUCTURE: ycmo(configuration)
-        ycmo
+        ycm
         %An array of the x coordinates of each wheel location.
         %STRUCTURE: x(configuration, iteration, wheel number)
         x 
@@ -89,6 +79,17 @@ classdef (Abstract) rover
         %The amount of iterations used per trial.
         %STRUTCTURE: res
         res
+        %The maximum coefficient of friction required for a given trial
+        %STRUCTURE: mew(configuration)
+        mew
+        %Array representing the mass matrix of the rover
+        %STRUCTURE: m(amount of masses [usually wheels, bogie, chassis])
+        m
+        %The elements obtained from the force analysis
+        %STRUCTURE: F(configuration, iteration, num of elements)
+        F
+        me
+        mewlims
     end
     
     methods (Abstract)
@@ -116,6 +117,8 @@ classdef (Abstract) rover
 % subclass specific values.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         obj = DetectPos(obj, Wheelnum, stair, x, y, th, c, i);
+        Output = checkGeometry(obj, c);
+        F = setupForceeqs(obj, c, i, mew, st, FN1, FN2, FN3, FRx1, FRx2, FRx3, FRy1, FRy2, FRy3, M1, M2, M3, FBx, FBy);
     end
     methods
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -132,12 +135,8 @@ classdef (Abstract) rover
 % Returns: The object whose dimensions are defined.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         function obj = AssignGeometry(obj, dims, Ra, c)
-            for i = 1:obj.dimnum
-                obj.dim(c, i) = dims(i);
-            end
-            for i = 1:obj.rnum
-                obj.R(c, i) = Ra(i);
-            end
+                obj.dim(c, :) = dims;
+                obj.R(c, :) = Ra;
         end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Method Drive
@@ -156,12 +155,14 @@ classdef (Abstract) rover
 %       numi -- The amount of iterations used during driving. The number of
 %               iterations determine the distance between each iteration.
 %       c -- The configuration used for the rover object.
+%       incDynamics -- A boolean that dictates whether force calculations
+%                      are to be included or not.
 % Returns: The rover object filling the numi sized dify array with
 %          the difference between the ideal and actual y center of gravity
 %          coordinates. The difyt value of the configuration is also
 %          defined with the sum of all difyt values.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        function obj = Drive(obj, st, wnum, maxx, pitch, c)
+        function obj = Drive(obj, st, wnum, maxx, pitch, c, incDynamics)
            %Some initializations
            obj.difyt(c) = 0;
            obj.warn(c) = 0;
@@ -171,6 +172,15 @@ classdef (Abstract) rover
            thi = pi/2;
            bnum = 0;
            sb = 2;
+%            if(c ~= 1 && incDynamics == 1)
+%                guess = obj.F(1, 1, :);
+%            else
+%                guess = zeros(1,4);
+%                guess(1) = 0.5;
+%                guess(2) = 100;
+%                guess(3) = 100;
+%                guess(4) = 100;
+%            end
            %Determine important generic values
            totalblock = floor(maxx / st.tread);
            sbnum = 3*totalblock + (maxx - totalblock * st.tread) / st.tread;
@@ -179,13 +189,10 @@ classdef (Abstract) rover
            dy = (st.riser - obj.R(c, wnum)) / pitch;
            dth = pi/ (2 * pitch);
            obj.its = totalits;
+           obj.mew(c, :, :) = [0, 10; 0, 0];
            for i = 1:totalits
                %Solve position and interpret results
                obj = DetectPos(obj, wnum, st, xi, yi, thi, c, i);
-               if (i == 1)
-                   obj.xcmo(c) = obj.xcm(c, 1);
-                   obj.ycmo(c) = obj.ycm(c, 1);
-               end
                if (obj.tch(c, i) == 0 || obj.val(c, i) == 0) 
                    obj.difyt(c) = [];
                    return;
@@ -194,10 +201,22 @@ classdef (Abstract) rover
                    obj.difyt(c) = [];
                    return;
                else
-                   yt = st.slope * (obj.xcm(c, i) - obj.xcmo(c));
+                   yt = st.slope * (obj.xcm(c, i) - obj.xcm(c, 1));
                    obj.dify(c, i) = ( yt - obj.ycm(i) )^2;
                end
                obj.difyt(c) = obj.difyt(c) + obj.dify(c, i);
+               %Force analysis portion
+               if(incDynamics == 1)
+                   obj.F(c, i) = executeCalculations(obj, c, i);
+                   %guess = obj.F(c, i, :);
+                   if(obj.F(c, i) < obj.mew(c, 1, 2)) %MIN
+                       obj.mew(c, 1, 1) = i;
+                       obj.mew(c, 1, 2) = obj.F(c, i);
+                   elseif(obj.F(c, i) > obj.mew(c, 2, 2)) %MAX
+                       obj.mew(c, 2, 1) = i;
+                       obj.mew(c, 2, 2) = obj.F(c, i);
+                   end
+               end
                %Determine next position of input wheel
                switch sb
                    case 1
@@ -259,7 +278,7 @@ classdef (Abstract) rover
 %              amount of snapshots on the stairs.
 % Returns: The optimized object with its min and max properties filled.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        function obj = Optimize(obj, Wnum, st, Rb, lims, in, res)
+        function obj = Optimize(obj, Wnum, st, Rb, lims, in, res, incDynamics)
             %Currently, the function does not optimise for wheel size,
             %although it can easily be adjusted to do so, but the
             %assumption is that we are currently buying wheels and it is
@@ -267,49 +286,19 @@ classdef (Abstract) rover
             %each wheel radius.
             obj.maxx = 1000;
             obj.res = res;
-            it = zeros(obj.dimnum);
-            dimi = zeros(obj.dimnum);
+            it = (lims(:, 2) - lims(:, 1))/(in - 1);
+            dimi = lims(:, 1);
             maxam = 0;
             minam = 999999999999999999;
-            for j = 1:obj.dimnum
-                it(j) = (lims(j, 2) - lims(j, 1))/(in - 1);
-                dimi(j) = lims(j, 1);
-            end
-            totalin = in^obj.dimnum;
-            %initialization start
-%             obj.xcm = zeros([totalin  res]);
-%             obj.ycm = zeros([totalin res]);
-%             obj.xcmo = zeros(totalin);
-%             obj.ycmo = zeros(totalin);
-%             obj.x = zeros([totalin res obj.rnum]);
-%             obj.y = zeros([totalin res obj.rnum]);
-%             obj.th = zeros([totalin res obj.rnum]);
-%             obj.tch = zeros([totalin res]);
-%             obj.val = zeros([totalin res]);
-%             obj.dify = zeros([totalin res]);
-%             obj.dify = zeros(totalin);
-%             obj.warn = zeros(totalin);
-            obj.dim = zeros(totalin, obj.dimnum);
-            %end initialization
+            totalin = in^obj.dimnum + 1;
             for c = 1:totalin
-                obj = obj.AssignGeometry(dimi, Rb, c);
-                disp(c);
-                allow = 1;
-                if( (dimi(4) + dimi(3)) < (Rb(1) + Rb(2)) )
-                    disp('The following iteration is skipped due to condition 1');
-                    allow = 0;
-                elseif( dimi(2) + dimi(1) - Rb(3) < dimi(4) + Rb(2) )
-                    disp('The following iteration is skipped due to condition 2');
-                    allow = 0;
-                elseif( Rb(3) + dimi(2) + dimi(1) + dimi(3) + Rb(1) > obj.lmax)
-                    disp('The following iteration is skipped due to condition 3');
-                    allow = 0;
+                if (c ~= 1)
+                    obj = obj.AssignGeometry(dimi, Rb, c);
                 end
+                %disp(c);
+                allow = checkGeometry(obj, c);
                 if(allow == 1)
-                    obj = obj.Drive(st, Wnum, obj.maxx, res, c);
-                    if (obj.warn(c) == 1)
-                       disp("WARNING!"); 
-                    end
+                    obj = obj.Drive(st, Wnum, obj.maxx, res, c, incDynamics);
                     %Establish whether the trial is a max or min condition.
                     if( obj.difyt(c) > maxam)
                         obj.max = c;
@@ -318,18 +307,22 @@ classdef (Abstract) rover
                         obj.min = c;
                         minam = obj.difyt(c);
                     end
+                    if( incDynamics == 1)
+                        if( obj.mew(c, 2, 2) < obj.mewlims(2) )
+                            obj.mewlims(1) = c;
+                            obj.mewlims(2) = obj.mew(c, 2, 2);
+                        end
+                    end
                 end
                 %the block below takes care of incrementing the dimensions.
-                for k = 1:(obj.dimnum)
-                    if(mod(c, in^k) ~= 0)
-                        num = obj.dimnum + 1 - k;
-                        dimi(num) = dimi(num) + it(num);
-                        if(k ~= 1)
-                            for m = (num + 1):obj.dimnum
-                                dimi(m) = lims(m, 1);
+                for k = (obj.dimnum):-1:1
+                    if( c ~= 1)
+                        dimi(k) = dimi(k) + it(k);
+                            if( dimi(k) > lims(k, 2) )
+                                dimi(k) = lims(k, 1);
+                            else
+                                break;
                             end
-                        end
-                        break;
                     end
                 end
             end
@@ -371,7 +364,7 @@ classdef (Abstract) rover
                cla(app.UIAxes);
                st.app_draw(app, 1.25 * obj.x(c, obj.its, 1) );
                obj.appdraw(app, c, i);
-               pause(obj.res/4);
+               pause(obj.res/360);
             end
         end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -385,13 +378,13 @@ classdef (Abstract) rover
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         function CompareCG(obj, st, maxx)
             hold on;
-            xmin(1) = obj.xcmo(obj.min);
-            xmin(2) = obj.xcmo(obj.min) + maxx;
-            ymin(1) = obj.ycmo(obj.min);
+            xmin(1) = obj.xcm(obj.min, 1);
+            xmin(2) = obj.xcm(obj.min, 1) + maxx;
+            ymin(1) = obj.ycm(obj.min, 1);
             ymin(2) = (xmin(2) - xmin(1))*st.slope + ymin(1);
-            xmax(1) = obj.xcmo(obj.max);
-            xmax(2) = obj.xcmo(obj.max) + maxx;
-            ymax(1) = obj.ycmo(obj.max);
+            xmax(1) = obj.xcm(obj.max, 1);
+            xmax(2) = obj.xcm(obj.max, 1) + maxx;
+            ymax(1) = obj.ycm(obj.max, 1);
             ymax(2) = (xmax(2) - xmax(1))*st.slope + ymax(1);
             plot(xmin, ymin,'DisplayName','Min ideal line');
             plot(obj.xcm(obj.min,:), obj.ycm(obj.min,:),'DisplayName', 'Min actual line');
@@ -414,14 +407,63 @@ classdef (Abstract) rover
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         function plotCG(obj, app, st, isIdeal, c)
             if(isIdeal == 1)
-                xp(1) = obj.xcmo(c);
-                xp(2) = obj.xcmo(c) + obj.maxx;
-                yp(1) = obj.ycmo(c);
-                yp(2) = obj.ycmo(c) + (xp(2) - xp(1))*st.slope;
+                xp(1) = obj.xcm(c, 1);
+                xp(2) = obj.xcm(c, 1) + obj.maxx;
+                yp(1) = obj.ycm(c, 1);
+                yp(2) = obj.ycm(c, 1) + (xp(2) - xp(1))*st.slope;
                 plot(app.UIAxes, xp, yp);
             elseif(isIdeal == 0)
                 plot(app.UIAxes, obj.xcm(c,:), obj.ycm(c,:));
             end
+        end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        function x = executeCalculations(obj, c, i)
+            %options = optimoptions('fsolve','MaxIterations',5000000);
+            %options.MaxFunctionEvaluations = 5000000;
+            %Func = @(input) setupForceeqs(obj, c, i, st, input);
+            %z = fsolve(Func, guess, options);
+            a(1) = obj.dim(c, 4) * cos( obj.alpha(c, i) ) + obj.dim(c, 5) * sin( obj.alpha(c, i) );
+            a(2) = obj.dim(c, 3) * cos( obj.alpha(c, i) ) - obj.dim(c, 5) * sin( obj.alpha(c, i) );
+            a(3) = obj.dim(c, 5) * cos( obj.alpha(c, i) ) - obj.dim(c, 4) * sin( obj.alpha(c, i) );
+            a(4) = obj.dim(c, 5) * cos( obj.alpha(c, i) ) + obj.dim(c, 3) * sin( obj.alpha(c, i) );
+            b(1) = (obj.dim(c, 1) + obj.dim(c, 2)) * cos(obj.beta(c, i)) - obj.dim(c, 5) * sin(obj.beta(c, i));
+            b(2) = obj.dim(c, 5) * cos(obj.beta(c, i)) + (obj.dim(c, 1) + obj.dim(c, 2)) * sin(obj.beta(c, i));
+            b(3) = obj.dim(c, 1) * cos(obj.beta(c, i)) - obj.dim(c, 6) * sin(obj.beta(c, i));
+            lh(1) = a(2) * sin( obj.th(c, i, 2) ) - a(4) * cos( obj.th(c, i, 2) ) - obj.R(c, 2);
+            lh(2) = a(2) * cos( obj.th(c, i, 2) ) + a(4) * sin( obj.th(c, i, 2) );
+            rh(1) = a(1) * sin( obj.th(c, i, 1) ) + a(3) * cos( obj.th(c, i, 1) ) + obj.R(c, 1);
+            rh(2) = a(1) * cos( obj.th(c, i, 1) ) - a(3) * sin( obj.th(c, i, 1) );
+            k(1) = sin( obj.th(c, i, 3) - obj.th(c, i, 1) ) + (b(1) / b(3)) * sin( obj.th(c, i, 1)) * cos( obj.th(c, i, 3) ) - (b(2) / b(3)) * cos( obj.th(c, i, 1) ) * cos( obj.th(c, i, 3) ) - obj.R(c, 3) * cos( obj.th(c, i, 1) );
+            k(2) = (b(1) / b(3)) * cos( obj.th(c, i, 1) + obj.th(c, i, 3) ) + (b(2) / b(3))* sin( obj.th(c, i, 1) + obj.th(c, i, 3) ) + obj.R(c, 3) * sin( obj.th(c, i, 1) );
+            k(3) = sin( obj.th(c, i, 3) - obj.th(c, i, 1) ) - (b(1) / b(3)) * cos( obj.th(c, i, 1) ) * sin( obj.th(c, i, 3) ) - (b(2) / b(3)) * sin( obj.th(c, i, 1) ) * sin( obj.th(c, i, 3) );
+            j(1) = sin( obj.th(c, i, 2) - obj.th(c, i, 3) ) + (obj.R(c, 3) / b(3)) * cos( obj.th(c, i, 2) ) - (b(1) / b(3)) * sin( obj.th(c, i, 2) ) * cos( obj.th(c, i, 3) ) + (b(2) / b(3)) * cos( obj.th(c, i, 2) ) * cos( obj.th(c, i, 3) );
+            j(2) = - (b(1) / b(3)) * cos( obj.th(c, i, 2) + obj.th(c, i, 3) ) - (b(2) / b(3)) * sin( obj.th(c, i, 2) - obj.th(c, i, 3) ) - (obj.R(c, 3) / b(3) ) * sin( obj.th(c, i, 2) );
+            j(3) = sin( obj.th(c, i, 2) - obj.th(c, i, 3) ) + (b(1) / b(3)) * cos( obj.th(c, i, 2) ) * sin( obj.th(c, i, 3) ) + (b(2) / b(3)) * sin( obj.th(c, i, 2) ) * sin( obj.th(c, i, 3) );
+%             k(1) = -sin( obj.th(c, i, 3) - obj.th(c, i, 1) ) * cos( obj.th(c, i, 3) );
+%             k(2) = sin( obj.th(c, i, 3) ) * sin( obj.th(c, i, 3) - obj.th(c, i, 1)) - (b(1) / b(3)) * sin( obj.th(c, i, 1) ) * cos ( obj.th(c, i, 3) ) - (b(2) / b(3)) * cos( obj.th(c, i, 1) ) * cos( obj.th(c, i, 3) );
+%             k(3) = obj.R(c, 3) / b(3) - (b(1) / b(3)) * cos( obj.th(c, i, 1) + obj.th(c, i, 3) )+ (b(2) / b(3)) * sin( obj.th(c, i, 1) + obj.th(c, i, 3) ) - sin ( obj.th(c, i, 3) - obj.th(c, i, 1) ) * cos( obj.th(c, i, 3) );
+%             k(4) = sin( obj.th(c, i, 3) ) * sin( obj.th(c, i, 3) - obj.th(c, i, 1)) + (b(1) / b(3)) * cos( obj.th(c, i, 1)) * sin( obj.th(c, i, 3) ) - (b(2) / b(3)) * sin( obj.th(c, i, 1) ) * sin( obj.th(c, i, 3) );
+%             j(1) = cos( obj.th(c, i, 3) ) * (cos( obj.th(c, i, 2) + obj.th(c, i, 3) ) + (b(2) / b(3)) * cos( obj.th(c, i, 2) ) * cos( obj.th(c, i, 3) ) + (b(1) / b(3)) * sin( obj.th(c, i, 2) ) * sin( obj.th(c, i, 3) ) - obj.R(c, 3) * cos( obj.th(c, i, 2) ) / b(3) );
+%             j(2) = obj.R(c, 3) * sin( obj.th(c, i, 2) + obj.th(c, i, 3) ) / b(3) - sin( obj.th(c, i, 3) ) * cos( obj.th(c, i, 2) + obj.th(c, i, 3) ) - (b(2) / b(3)) * cos( obj.th(c, i, 3) ) * (cos( obj.th(c, i, 2) ) * sin( obj.th(c, i, 3) ) + sin( obj.th(c, i, 3) - obj.th(c, i, 2) )) + (b(1) / b(3)) * (cos( obj.th(c, i, 2) + obj.th(c, i, 3) ) * cos( obj.th(c, i, 3) ) - sin( obj.th(c, i, 2) ) * sin( obj.th(c, i, 3) )^2 );
+%             j(3) = sin( obj.th(c, i, 3) ) * ((b(2) / b(3)) * (sin( obj.th(c, i, 3) - obj.th(c, i, 2) ) - sin( obj.th(c, i, 2) ) * cos( obj.th(c, i, 3) )) - (b(1) / b(3)) * (cos( obj.th(c, i, 3) + obj.th(c, i, 2) ) + cos( obj.th(c, i, 2) ) * cos( obj.th(c, i, 3) ) ) - obj.R(c, 3) * sin( obj.th(c, i, 2) ) / b(3) + cos( obj.th(c, i, 2) + obj.th(c, i, 3) ) );
+%             j(4) = sin( obj.th(c, i, 3) )^2 * ( (b(1) / b(3)) * cos( obj.th(c, i, 2) ) + (b(2) / b(3)) * sin( obj.th(c, i, 2) ) - cos( obj.th(c, i, 2) ) + sin( obj.th(c, i, 2) ) );
+            xai(1) = lh(1) * k(1) - rh(1) * j(1);
+            xai(2) = lh(2) * k(1) + lh(1) * k(2) - rh(2) * j(1) - rh(1) * j(2);
+            xai(3) = lh(2) * k(2) + lh(1) * k(3) - rh(2) * j(2) - rh(1) * j(3);
+            xai(4) = lh(2) * k(3) - rh(2) * j(3);
+            obj.me(c, i, :) = roots(xai);
+            x = obj.me(c, i, 2);
+            for d = 1:3
+                if(isreal( obj.me(c, i, d) ) && obj.me(c, i, d) > 0 && obj.me(c, i, d) < 1.0 )
+                    x = obj.me(c, i, d);
+                    break;
+                elseif(isreal( obj.me(c, i, d) ) && ( obj.me(c, i, d) < 0.001 && obj.me(c, i, d) > -0.001) )
+                    x = 0.0;
+                end
+            end
+            %x = [z, yi.'];
         end
     end
 end

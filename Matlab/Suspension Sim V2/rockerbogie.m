@@ -19,12 +19,14 @@ classdef rockerbogie < rover
 % Parameters: See the AssignGeometry method - The properties are the same.
 % Returns: The object which is being initialized.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        function obj = rockerbogie(dims, Ra, lmax)
+        function obj = rockerbogie(dims, Ra, M, lmax)
             obj.dimnum = 6;
             obj.rnum = 3;
-            AssignGeometry(obj, dims, Ra, 1);
+            obj = AssignGeometry(obj, dims, Ra, 1);
+            obj.m = M;
             obj.difyt = 0;
             obj.lmax = lmax;
+            obj.mewlims = [0, 100];
         end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Method DetectPos
@@ -482,6 +484,30 @@ classdef rockerbogie < rover
             end
         end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Method checkGeometry
+% Purpose: Verify that assigned geometry values are appropriate within the
+%          context of the specific rover type.
+% Parameters:
+%       obj -- the rover object to be checked.
+%       c -- the configuration housing the geometry to be checked.
+% Returns: 
+%       1 -- if the configuration's geometry is allowed.
+%       2 -- if the configuration's geometry is not allowed.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        function Output = checkGeometry(obj, c)
+            Output = 1;
+            if( (obj.dim(c, 4) + obj.dim(c, 3)) < (obj.R(c, 1) + obj.R(c, 2)) )
+                %disp('The following iteration is skipped due to condition 1');
+                Output = 0;
+            elseif( obj.dim(c, 2) + obj.dim(c, 1) - obj.R(c, 3) < obj.dim(c, 4) + obj.R(c, 2) )
+                %disp('The following iteration is skipped due to condition 2');
+                Output = 0;
+            elseif( obj.R(c, 3) + obj.dim(c, 2) + obj.dim(c, 1) + obj.dim(c, 3) + obj.R(c, 1) > obj.lmax)
+                %disp('The following iteration is skipped due to condition 3');
+                Output = 0;
+            end
+        end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Method draw
 % Purpose: Creates a drawing of the rover as the plot. Takes into account
 %          the current coordinates and orientation of each link.
@@ -521,7 +547,7 @@ classdef rockerbogie < rover
             circle(obj.xcm(c, i),obj.ycm(c, i),25);
         end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Method draw
+% Method appdraw
 % Purpose: Creates a drawing of the rover as the plot. Takes into account
 %          the current coordinates and orientation of each link. This
 %          drawing is shown in a given app.
@@ -560,6 +586,34 @@ classdef rockerbogie < rover
             plot(app.UIAxes, pp4x, pp4y);
             plot(app.UIAxes, pp5x, pp5y);
             circleUI(app, obj.xcm(c, i),obj.ycm(c, i),25);
+        end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Method setupForceeqs
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        function F = setupForceeqs(obj, c, i, st, in)
+            Wr = 50 * st.g;
+            Fx(1) = (sin(obj.th(c, i, 1)) - in(1) * cos(obj.th(c, i, 1))) * in(2);
+            Fx(2) = (sin(obj.th(c, i, 2)) - in(1) * cos(obj.th(c, i, 2))) * in(3);
+            Fx(3) = (sin(obj.th(c, i, 3)) - in(1) * cos(obj.th(c, i, 3))) * in(4);
+            Fy(1) = (in(1) * sin(obj.th(c, i, 1)) + cos(obj.th(c, i, 1))) * in(2);
+            Fy(2) = (in(1) * sin(obj.th(c, i, 2)) + cos(obj.th(c, i, 2))) * in(3);
+            Fy(3) = (in(1) * sin(obj.th(c, i, 3)) + cos(obj.th(c, i, 3))) * in(4);
+            M(1) = in(1) * obj.R(c, 1) * in(2);
+            M(2) = in(1) * obj.R(c, 2) * in(3);
+            M(3) = in(1) * obj.R(c, 3) * in(4);
+            FBx = Fx(3);
+            FBy = Fy(1) + Fy(2);
+            a(1) = obj.dim(c, 4) * cos( obj.alpha(c, i) ) + obj.dim(c, 5) * sin( obj.alpha(c, i) );
+            a(2) = obj.dim(c, 3) * cos( obj.alpha(c, i) ) - obj.dim(c, 5) * sin( obj.alpha(c, i) );
+            a(3) = obj.dim(c, 5) * cos( obj.alpha(c, i) ) - obj.dim(c, 4) * sin( obj.alpha(c, i) );
+            a(4) = obj.dim(c, 5) * cos( obj.alpha(c, i) ) + obj.dim(c, 3) * sin( obj.alpha(c, i) );
+            b(1) = (obj.dim(c, 1) + obj.dim(c, 2)) * cos(obj.beta(c, i)) - obj.dim(c, 5) * sin(obj.beta(c, i));
+            b(2) = obj.dim(c, 5) * cos(obj.beta(c, i)) + (obj.dim(c, 1) + obj.dim(c, 2)) * sin(obj.beta(c, i));
+            b(3) = obj.dim(c, 1) * cos(obj.beta(c, i)) - obj.dim(c, 6) * sin(obj.beta(c, i));
+            F(1) = Fx(1) + Fx(2) + FBx;
+            F(2) = a(1) * Fy(1) - a(2) * Fy(2) - a(3) * Fx(1) - a(4) * Fx(2) + M(1) + M(2);
+            F(3) = Fy(3) + FBy - Wr;
+            F(4) = b(1) * FBy - b(2) * FBx - b(3) * Wr + M(3);
         end
     end
 end
