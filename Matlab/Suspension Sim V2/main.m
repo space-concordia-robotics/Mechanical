@@ -1,6 +1,6 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %              MARS ROVER QUASI STATIC GEOMETRY OPTIMIZATION   
-%                              VERSION: 0.4.0
+%                              VERSION: 0.4.1
 % Author: Maxim Kaller
 % Description: 
 % Units: 
@@ -58,26 +58,25 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % TO DO (must be complete before work on next major release can begin):
 % -Refractor code
-% -Double check calculation equations
+% -Ensure checkGeometry no longer requires config number.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 tic;
-a = stairs(240, 200, 9.8065);
+a = stairs(1200, 350, 9.8065);
 R = [150, 150, 150];
 M = [2.8, 1.2, 30.8];
 dims = [481, 194, 225, 225, 170, 94];
 robert = rockerbogie(dims, R, M, 1200);
-Lr = [400, 600];
+Lr = [400, 600]; 
 Ll = [180, 600];
 lr = [155, 300];
 ll = [155, 300];
 db = [155, 200];
 hb = [25, 200];
 lims = [400, 600; 180, 600; 155, 300; 155, 300; 155, 200; 25, 200];
-robert = robert.Optimize(1, a, R, lims, 3, 4, 1);
-% robert.CompareCG(a, 1000)
-% cee = 1;
-% ite = 22;
-% x = executeCalculations(robert, cee, ite);
+robert = robert.Optimize(1, a, R, lims, 3, 100, 1);
+% cee = 69;
+% ite = 170;
+% x = executeCalculations(robert, cee, ite, 1);
 % y(:) = robert.dim(cee,:);
 % z = [robert.alpha(cee, ite), robert.beta(cee,ite)];
 % al = [robert.th(cee, ite, 1), robert.th(cee, ite, 2), robert.th(cee, ite, 3)];

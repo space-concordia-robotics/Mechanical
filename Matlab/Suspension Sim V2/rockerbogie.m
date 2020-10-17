@@ -26,26 +26,10 @@ classdef rockerbogie < rover
             obj.m = M;
             obj.difyt = 0;
             obj.lmax = lmax;
-            obj.mewlims = [0, 100];
         end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Method DetectPos
-% Purpose: Uses a variety of methods to detect the full position and the
-%          orientation of the rover. Loops through block and sub block
-%          numbers for all non input wheels to determine the right
-%          combination.
-% Parameters:
-%       obj -- the rockerbogie object whose position will be determined.
-%       Wheelnum -- the number corresponding to the input wheel.
-%       stair -- the stair object on which the rover is driving.
-%       x -- x coordinate input for the wheel contact point on the stair.
-%       y -- y coordinate input for the wheel contact point on the stair.
-%       th -- wheel contact angle input (see definitions in main.m for
-%             information on contact angles).
-%       c -- the configuration whose position is being calculated.
-%       i -- the iteration whose position is being calculated.
-% Returns: The rockerbogie object with defined coordinate and orientation
-%          properties.
+% Full code block available in rover.m
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         function obj = DetectPos(obj, Wheelnum, stair, x, y, th, c,  i)
             if( stair.isOnStairs(x, y) == 0)
@@ -485,24 +469,17 @@ classdef rockerbogie < rover
         end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Method checkGeometry
-% Purpose: Verify that assigned geometry values are appropriate within the
-%          context of the specific rover type.
-% Parameters:
-%       obj -- the rover object to be checked.
-%       c -- the configuration housing the geometry to be checked.
-% Returns: 
-%       1 -- if the configuration's geometry is allowed.
-%       2 -- if the configuration's geometry is not allowed.
+% Full code block available on rover.m
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        function Output = checkGeometry(obj, c)
+        function Output = checkGeometry(obj, dim, c)
             Output = 1;
-            if( (obj.dim(c, 4) + obj.dim(c, 3)) < (obj.R(c, 1) + obj.R(c, 2)) )
+            if( (dim(4) + dim(3)) < (obj.R(c, 1) + obj.R(c, 2)) )
                 %disp('The following iteration is skipped due to condition 1');
                 Output = 0;
-            elseif( obj.dim(c, 2) + obj.dim(c, 1) - obj.R(c, 3) < obj.dim(c, 4) + obj.R(c, 2) )
+            elseif( dim(2) + dim(1) - obj.R(c, 3) < dim(4) + obj.R(c, 2) )
                 %disp('The following iteration is skipped due to condition 2');
                 Output = 0;
-            elseif( obj.R(c, 3) + obj.dim(c, 2) + obj.dim(c, 1) + obj.dim(c, 3) + obj.R(c, 1) > obj.lmax)
+            elseif( obj.R(c, 3) + dim(2) + dim(1) + dim(3) + obj.R(c, 1) > obj.lmax)
                 %disp('The following iteration is skipped due to condition 3');
                 Output = 0;
             end
@@ -589,20 +566,19 @@ classdef rockerbogie < rover
         end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Method setupForceeqs
+% Full code block available in rover.m
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        function F = setupForceeqs(obj, c, i, st, in)
-            Wr = 50 * st.g;
-            Fx(1) = (sin(obj.th(c, i, 1)) - in(1) * cos(obj.th(c, i, 1))) * in(2);
-            Fx(2) = (sin(obj.th(c, i, 2)) - in(1) * cos(obj.th(c, i, 2))) * in(3);
-            Fx(3) = (sin(obj.th(c, i, 3)) - in(1) * cos(obj.th(c, i, 3))) * in(4);
-            Fy(1) = (in(1) * sin(obj.th(c, i, 1)) + cos(obj.th(c, i, 1))) * in(2);
-            Fy(2) = (in(1) * sin(obj.th(c, i, 2)) + cos(obj.th(c, i, 2))) * in(3);
-            Fy(3) = (in(1) * sin(obj.th(c, i, 3)) + cos(obj.th(c, i, 3))) * in(4);
-            M(1) = in(1) * obj.R(c, 1) * in(2);
-            M(2) = in(1) * obj.R(c, 2) * in(3);
-            M(3) = in(1) * obj.R(c, 3) * in(4);
-            FBx = Fx(3);
-            FBy = Fy(1) + Fy(2);
+        function F = setupForceeqs(obj, c, i, in)
+            Wr = 50 * 9.81;
+            Fx(1) = (in(1) * cos(obj.th(c, i, 1)) - sin(obj.th(c, i, 1))) * in(2)^2;
+            Fx(2) = (in(1) * cos(obj.th(c, i, 2)) - sin(obj.th(c, i, 2))) * in(3)^2;
+            Fx(3) = (in(1) * cos(obj.th(c, i, 3)) - sin(obj.th(c, i, 3))) * in(4)^2;
+            Fy(1) = (in(1) * sin(obj.th(c, i, 1)) + cos(obj.th(c, i, 1))) * in(2)^2;
+            Fy(2) = (in(1) * sin(obj.th(c, i, 2)) + cos(obj.th(c, i, 2))) * in(3)^2;
+            Fy(3) = (in(1) * sin(obj.th(c, i, 3)) + cos(obj.th(c, i, 3))) * in(4)^2;
+            M(1) = in(1) * obj.R(c, 1) * in(2)^2;
+            M(2) = in(1) * obj.R(c, 2) * in(3)^2;
+            M(3) = in(1) * obj.R(c, 3) * in(4)^2;
             a(1) = obj.dim(c, 4) * cos( obj.alpha(c, i) ) + obj.dim(c, 5) * sin( obj.alpha(c, i) );
             a(2) = obj.dim(c, 3) * cos( obj.alpha(c, i) ) - obj.dim(c, 5) * sin( obj.alpha(c, i) );
             a(3) = obj.dim(c, 5) * cos( obj.alpha(c, i) ) - obj.dim(c, 4) * sin( obj.alpha(c, i) );
@@ -610,10 +586,10 @@ classdef rockerbogie < rover
             b(1) = (obj.dim(c, 1) + obj.dim(c, 2)) * cos(obj.beta(c, i)) - obj.dim(c, 5) * sin(obj.beta(c, i));
             b(2) = obj.dim(c, 5) * cos(obj.beta(c, i)) + (obj.dim(c, 1) + obj.dim(c, 2)) * sin(obj.beta(c, i));
             b(3) = obj.dim(c, 1) * cos(obj.beta(c, i)) - obj.dim(c, 6) * sin(obj.beta(c, i));
-            F(1) = Fx(1) + Fx(2) + FBx;
-            F(2) = a(1) * Fy(1) - a(2) * Fy(2) - a(3) * Fx(1) - a(4) * Fx(2) + M(1) + M(2);
-            F(3) = Fy(3) + FBy - Wr;
-            F(4) = b(1) * FBy - b(2) * FBx - b(3) * Wr + M(3);
+            F(1) = Fx(1) + Fx(2) + Fx(3);
+            F(2) = a(1) * Fy(1) - a(2) * Fy(2) + a(3) * Fx(1) + a(4) * Fx(2) + M(1) + M(2);
+            F(3) = Fy(3) + Fy(1) + Fy(2) - Wr;
+            F(4) = b(1) * (Fy(1) + Fy(2)) - b(2) * (Fx(1) + Fx(2)) - b(3) * Wr + M(3);
         end
     end
 end
